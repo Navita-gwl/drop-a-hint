@@ -1,73 +1,288 @@
-.index {
-  align-items: center;
+/* Drop A Hint landing — teal brand tokens aligned with admin theme */
+.page {
+  --color-primary: #008790;
+  --color-primary-hover: #00737a;
+  --color-primary-active: #006066;
+  --color-primary-focus: rgba(0, 135, 144, 0.25);
+  --color-text: #111111;
+  --color-text-secondary: #555555;
+  --color-text-muted: #8a8a8a;
+  --color-surface: #ffffff;
+  --color-border: #e5e5e5;
+  --font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  width: 100%; 
+  overflow-x: hidden;
+  font-family: var(--font-family);
+  color: var(--color-text);
+  background: #f3f8f8;
+  -webkit-font-smoothing: antialiased;
+}
+
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(
+      ellipse 80% 55% at 50% -10%,
+      rgba(0, 135, 144, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 100% 30%,
+      rgba(0, 135, 144, 0.08),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 45% 35% at 0% 70%,
+      rgba(20, 125, 112, 0.07),
+      transparent 50%
+    ),
+    linear-gradient(180deg, #eef6f6 0%, #f7f7f7 45%, #f3f8f8 100%);
+  animation: atmosphereDrift 18s ease-in-out infinite alternate;
+}
+
+@keyframes atmosphereDrift {
+  from {
+    transform: scale(1) translateY(0);
+  }
+  to {
+    transform: scale(1.04) translateY(-12px);
+  }
+}
+
+.main {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  height: 100%;
-  width: 100%;
+  gap: 4.5rem;
+  min-height: 100vh;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 4rem;
   text-align: center;
-  padding: 1rem;
 }
 
-.heading,
-.text {
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  max-width: 40rem;
+  animation: riseIn 0.7s ease-out both;
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.brand {
+  margin: 0 0 1.25rem;
+  font-size: clamp(2.25rem, 5.5vw, 3.25rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: var(--color-primary);
+}
+
+.heading {
+  margin: 0 0 0.85rem;
   padding: 0;
-  margin: 0;
+  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  color: var(--color-text);
 }
 
-.text {
-  font-size: 1.2rem;
-  padding-bottom: 2rem;
-}
-
-.content {
-  display: grid;
-  gap: 2rem;
+.tagline {
+  margin: 0 0 2.25rem;
+  padding: 0;
+  max-width: 34rem;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
 }
 
 .form {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin: 0 auto;
-  gap: 1rem;
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.25rem 1.35rem 1.15rem;
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 135, 144, 0.08);
+  animation: riseIn 0.7s ease-out 0.12s both;
 }
 
 .label {
-  display: grid;
-  gap: 0.2rem;
-  max-width: 20rem;
-  text-align: left;
-  font-size: 1rem;
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.formRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
 }
 
 .input {
-  padding: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.65rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  background: #fafafa;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-focus);
+  background: var(--color-surface);
 }
 
 .button {
-  padding: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.65rem 1.15rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
-.list {
-  list-style: none;
-  padding: 0;
-  padding-top: 3rem;
+.button:hover {
+  background: var(--color-primary-hover);
+}
+
+.button:active {
+  background: var(--color-primary-active);
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.hint {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem 2.5rem;
+  width: 100%;
   margin: 0;
-  display: flex;
-  gap: 2rem;
+  padding: 0;
+  text-align: left;
+  animation: riseIn 0.7s ease-out 0.24s both;
 }
 
-.list > li {
-  max-width: 20rem;
-  text-align: left;
+.feature {
+  position: relative;
+  padding-top: 1rem;
+}
+
+.feature::before {
+  content: "";
+  display: block;
+  width: 2rem;
+  height: 3px;
+  margin-bottom: 0.9rem;
+  border-radius: 2px;
+  background: var(--color-primary);
+  transform-origin: left center;
+  animation: barGrow 0.6s ease-out 0.4s both;
+}
+
+@keyframes barGrow {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.featureTitle {
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+
+.featureText {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
 }
 
 @media only screen and (max-width: 50rem) {
-  .list {
-    display: block;
+  .main {
+    gap: 3rem;
+    padding: 2.5rem 1.25rem 3rem;
+    justify-content: flex-start;
   }
 
-  .list > li {
-    padding-bottom: 1rem;
+  .formRow {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere,
+  .hero,
+  .form,
+  .features,
+  .feature::before {
+    animation: none;
   }
 }
