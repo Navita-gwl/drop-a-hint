@@ -17,3 +17,4 @@ scopes = "read_customers,read_draft_orders,read_orders,write_discounts,write_met
 
 [auth]
 redirect_urls = [ "https://example.com/api/auth" ]
+

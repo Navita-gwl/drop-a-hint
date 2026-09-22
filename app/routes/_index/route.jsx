@@ -50,5 +50,4 @@ export default function App() {
         </ul>
       </div>
     </div>
-  );
-}
+  );   
