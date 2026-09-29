@@ -147,12 +147,13 @@ export function EmailSettings({ initialSettings, onSave, showToast }) {
 
       <Form onSubmit={handleSubmit}>
         <BlockStack gap="600">
-          <Banner title="SendGrid Sender Identity Requirement" tone="info">
+          
+          <Banner title="Amazon SES sender requirement" tone="info">
             <p>
-              Your email provider (SendGrid) requires any custom <strong>Sending Email</strong> (or domain) to be verified under <strong>SendGrid &gt; Settings &gt; Sender Authentication</strong> before sending emails.
+              Emails are sent through Amazon SES. Any custom <strong>Sending Email</strong> must be a verified identity in SES. The default sender is no-reply@galaxyweblinks.com.
             </p>
             <p style={{ marginTop: "4px" }}>
-              If an unverified sending email is used, SendGrid will reject outgoing emails. Leave blank to use your default verified sender.
+              If an unverified sending email is used, SES rejects it and the app retries from the default sender. Leave blank to use that default.
             </p>
           </Banner>
           {/* Subsection A: Product Referral Sent */}
