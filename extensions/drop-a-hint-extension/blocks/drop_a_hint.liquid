@@ -306,19 +306,17 @@
             });
           })
           .then(function(data) {
-            if (data && data.success) {
+            var referralSaved = data && (data.success || data.submitted || (data.referral && data.referral.id));
+            if (referralSaved) {
+              isSubmitting = false;
               setSubmitLocked(true, 'Submitted');
               if (formMsg) {
-                formMsg.style.color = '#008060';
-                formMsg.innerText = data.message || 'Referral submitted! An invitation email has been sent to your friend.';
+                var emailFailed = data.emailSent === false || (data.message && data.message.indexOf('email delivery failed') !== -1);
+                formMsg.style.color = emailFailed ? '#d32f2f' : '#008060';
+                formMsg.innerText = data.message || data.error || 'Referral submitted! An invitation email has been sent to your friend.';
                 formMsg.style.display = 'block';
               }
               form.reset();
-              setTimeout(function() {
-                if (modal) modal.style.display = 'none';
-                if (formMsg) formMsg.style.display = 'none';
-                resetSubmitButton();
-              }, 2500);
             } else {
               resetSubmitButton();
               if (formMsg) {
