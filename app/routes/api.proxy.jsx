@@ -188,6 +188,12 @@ export const action = async ({ request }) => {
       if (!receiverEmail || !isValidEmail(receiverEmail)) {
         return jsonResponse({ success: false, error: "A valid email for 'Friend's Email' is required" });
       }
+      if (senderEmail.trim().toLowerCase() === receiverEmail.trim().toLowerCase()) {
+        return jsonResponse({
+          success: false,
+          error: "Your email and referral email cannot be the same.",
+        });
+      }
 
       // Step 1: Create Referral Record with Reward Snapshot
       let referralResult;
