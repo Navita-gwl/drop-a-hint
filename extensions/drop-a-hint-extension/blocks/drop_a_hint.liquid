@@ -248,6 +248,16 @@
       if (form) {
         form.addEventListener('submit', function(e) {
           e.preventDefault();
+          var senderEmailValue = (document.getElementById('dah-sender-email-' + blockId)?.value || '').trim().toLowerCase();
+          var receiverEmailValue = (document.getElementById('dah-receiver-email-' + blockId)?.value || '').trim().toLowerCase();
+          if (senderEmailValue && receiverEmailValue && senderEmailValue === receiverEmailValue) {
+            if (formMsg) {
+              formMsg.style.color = '#d32f2f';
+              formMsg.innerText = 'Your email and referral email cannot be the same.';
+              formMsg.style.display = 'block';
+            }
+            return;
+          }
           if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerText = 'Submitting...';
