@@ -27,7 +27,7 @@
     <div style="display: flex; align-items: center; gap: 10px; margin-top: 0; margin-bottom: 15px;">
       <h2 style="margin: 0; color: #333; font-size: 22px;">Refer a Friend</h2>
     </div>
-    <form id="dah-refer-form-{{ block.id }}">
+    <form id="dah-refer-form-{{ block.id }}" novalidate>
       <div style="margin-bottom: 15px;">
         <label for="dah-sender-name-{{ block.id }}" style="display: block; margin-bottom: 5px; color: #555; font-size: 14px;">Your Name</label>
         <input type="text" id="dah-sender-name-{{ block.id }}" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" />
@@ -84,23 +84,6 @@
       }
     }
 
-    function syncCartAttributes(refToken) {
-      if (!refToken) return;
-      // Proactively sync referral token with Shopify Cart attributes
-      try {
-        fetch('/cart/update.js', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            attributes: {
-              dah_ref: refToken,
-              referral: refToken
-            }
-          })
-        }).catch(function() {});
-      } catch(e) {}
-    }
-
     function attachReferralToForms(refToken) {
       if (!refToken) return;
       try {
@@ -113,13 +96,11 @@
             attrInput.value = refToken;
             f.appendChild(attrInput);
           }
-          if (!f.querySelector('input[name="properties[_dah_ref]"]')) {
-            var propInput = document.createElement('input');
-            propInput.type = 'hidden';
-            propInput.name = 'properties[_dah_ref]';
-            propInput.value = refToken;
-            f.appendChild(propInput);
-          }
+          // Line-item properties make Shopify store the same variant as a separate cart line.
+          // The referral token stays on the cart attribute instead.
+          f.querySelectorAll('input[name="properties[_dah_ref]"]').forEach(function(node) {
+            node.remove();
+          });
         });
       } catch(e) {}
     }
@@ -137,24 +118,89 @@
             input.value = refToken;
             form.appendChild(input);
           }
-          if (!form.querySelector('input[name="properties[_dah_ref]"]')) {
-            var prop = document.createElement('input');
-            prop.type = 'hidden';
-            prop.name = 'properties[_dah_ref]';
-            prop.value = refToken;
-            form.appendChild(prop);
-          }
+          form.querySelectorAll('input[name="properties[_dah_ref]"]').forEach(function(node) {
+            node.remove();
+          });
         }
       }, true);
+    }
+
+    function lineSignature(item) {
+      var props = item.properties || {};
+      var extra = [];
+      Object.keys(props).forEach(function(key) {
+        if (key === '_dah_ref' || key === 'dah_ref' || key === 'referral' || key === 'ref') return;
+        extra.push(key + '=' + props[key]);
+      });
+      extra.sort();
+      var plan = item.selling_plan_allocation && item.selling_plan_allocation.selling_plan
+        ? item.selling_plan_allocation.selling_plan.id
+        : '';
+      return String(item.variant_id) + '|' + plan + '|' + extra.join('&');
+    }
+
+    function cleanLineProperties(item) {
+      var clean = {};
+      Object.keys(item.properties || {}).forEach(function(key) {
+        if (key === '_dah_ref' || key === 'dah_ref' || key === 'referral' || key === 'ref') return;
+        clean[key] = item.properties[key];
+      });
+      return clean;
+    }
+
+    // Combine cart lines that were split only by the referral property.
+    function mergeDuplicateCartLines() {
+      fetch('/cart.js', { headers: { Accept: 'application/json' } })
+        .then(function(res) { return res.json(); })
+        .then(function(cart) {
+          if (!cart || !Array.isArray(cart.items) || cart.items.length < 2) return;
+          var groups = {};
+          cart.items.forEach(function(item) {
+            var signature = lineSignature(item);
+            if (!groups[signature]) groups[signature] = [];
+            groups[signature].push(item);
+          });
+
+          var jobs = [];
+          Object.keys(groups).forEach(function(signature) {
+            var items = groups[signature];
+            if (items.length < 2) return;
+            var total = 0;
+            items.forEach(function(item) { total += item.quantity; });
+            var kept = items[0];
+            jobs.push(
+              fetch('/cart/change.js', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({
+                  id: kept.key,
+                  quantity: total,
+                  properties: cleanLineProperties(kept)
+                })
+              }).then(function() {
+                var removals = items.slice(1).map(function(item) {
+                  return fetch('/cart/change.js', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ id: item.key, quantity: 0 })
+                  });
+                });
+                return Promise.all(removals);
+              })
+            );
+          });
+          return Promise.all(jobs);
+        })
+        .catch(function() {});
     }
 
     var currentRefToken = getStoredReferralToken();
     if (currentRefToken) {
       persistReferralToken(currentRefToken);
-      syncCartAttributes(currentRefToken);
       attachReferralToForms(currentRefToken);
       setupFormInterception(currentRefToken);
     }
+    mergeDuplicateCartLines();
 
     // Auto apply discount if discount parameter is in URL
     try {
@@ -245,17 +291,35 @@
         }
       });
 
+      function showFormError(message) {
+        if (!formMsg) return;
+        formMsg.style.color = '#d32f2f';
+        formMsg.style.whiteSpace = 'pre-line';
+        formMsg.innerText = message;
+        formMsg.style.display = 'block';
+      }
+
       if (form) {
         form.addEventListener('submit', function(e) {
           e.preventDefault();
-          var senderEmailValue = (document.getElementById('dah-sender-email-' + blockId)?.value || '').trim().toLowerCase();
-          var receiverEmailValue = (document.getElementById('dah-receiver-email-' + blockId)?.value || '').trim().toLowerCase();
-          if (senderEmailValue && receiverEmailValue && senderEmailValue === receiverEmailValue) {
-            if (formMsg) {
-              formMsg.style.color = '#d32f2f';
-              formMsg.innerText = 'Your email and referral email cannot be the same.';
-              formMsg.style.display = 'block';
-            }
+          var senderNameValue = (document.getElementById('dah-sender-name-' + blockId)?.value || '').trim();
+          var senderEmailValue = (document.getElementById('dah-sender-email-' + blockId)?.value || '').trim();
+          var receiverNameValue = (document.getElementById('dah-receiver-name-' + blockId)?.value || '').trim();
+          var receiverEmailValue = (document.getElementById('dah-receiver-email-' + blockId)?.value || '').trim();
+          var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          var errors = [];
+
+          if (!senderNameValue) errors.push('Your Name is required.');
+          if (!senderEmailValue) errors.push('Your Email is required.');
+          else if (!emailPattern.test(senderEmailValue)) errors.push('A valid email for Your Email is required.');
+          if (!receiverNameValue) errors.push("Friend's Name is required.");
+          if (!receiverEmailValue) errors.push("Friend's Email is required.");
+          else if (!emailPattern.test(receiverEmailValue)) errors.push("A valid email for Friend's Email is required.");
+          if (senderEmailValue && receiverEmailValue && senderEmailValue.toLowerCase() === receiverEmailValue.toLowerCase()) {
+            errors.push('Your email and referral email cannot be the same.');
+          }
+          if (errors.length) {
+            showFormError(errors.join('\n'));
             return;
           }
           if (submitBtn) {
