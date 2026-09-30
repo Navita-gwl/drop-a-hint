@@ -82,7 +82,7 @@ export const action = async ({ request }) => {
   try {
     const result = await sendSupportEmail({ name, email, phone, subject, message, shop });
     console.log(
-      `[Support] Ticket delivered to rajesh.verma@galaxyweblinks.com. MessageId: ${result.messageId}, Status: ${result.statusCode}`
+      `[Support] Ticket delivered to pawan.kumar@galaxyweblinks.com. MessageId: ${result.messageId}, Status: ${result.statusCode}`
     );
     return jsonResponse({ success: true, message: "Support request submitted successfully!" });
   } catch (err) {

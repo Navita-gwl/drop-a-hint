@@ -211,22 +211,7 @@ export const action = async ({ request }) => {
         });
       }
 
-      const { referral, token, duplicate } = referralResult;
-
-      if (duplicate) {
-        return jsonResponse({
-          success: true,
-          submitted: true,
-          duplicate: true,
-          message: "You already submitted a referral. Only one referral is allowed.",
-          referral: {
-            id: referral.id,
-            token: referral.token,
-            orderStatus: referral.orderStatus,
-            rewardStatus: referral.rewardStatus,
-          },
-        });
-      }
+      const { referral, token } = referralResult;
 
       // Safe URL construction for invitation link (handles relative/missing URLs gracefully)
       let referralUrlStr = productUrl || `https://${session.shop}`;
@@ -278,10 +263,8 @@ export const action = async ({ request }) => {
 
       if (!emailSent) {
         return jsonResponse({
-          success: true,
-          submitted: true,
-          emailSent: false,
-          message: "Email delivery failed.",
+          success: false,
+          error: `Referral saved, but email delivery failed: ${emailErrorMessage}`,
           referral: {
             id: referral.id,
             token: referral.token,

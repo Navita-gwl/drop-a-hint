@@ -19,7 +19,7 @@ test("End-to-End Referral Flow Verification", async (t) => {
     const { referral, token } = await createReferral({
       shop: TEST_SHOP,
       senderName: "Customer A",
-      senderEmail: "rajesh.verma@galaxyweblinks.com",
+      senderEmail: "pawan.kumar@galaxyweblinks.com",
       receiverName: "Friend B",
       receiverEmail: friendEmail,
       productUrl: "https://drop-a-hint-pczxxbw4.myshopify.com/products/selling-plans-ski-wax",
@@ -170,7 +170,7 @@ test("End-to-End Referral Flow Verification", async (t) => {
       id: redemptionOrderId,
       order_number: redemptionOrderNumber,
       name: `#${redemptionOrderNumber}`,
-      email: "rajesh.verma@galaxyweblinks.com",
+      email: "pawan.kumar@galaxyweblinks.com",
       financial_status: "paid",
       total_price: "50.00",
       discount_codes: [{ code: refRecord.discountCode, amount: "7.50" }],

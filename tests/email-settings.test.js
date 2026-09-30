@@ -143,7 +143,7 @@ test("Email Settings & Customization Test Suite", async (t) => {
   });
 
   await t.test("4. sendReferralEmail dispatches with configured sender email and custom subject", async () => {
-    const verifiedSender = process.env.SENDGRID_FROM_EMAIL || "rajesh.verma@galaxyweblinks.com";
+    const verifiedSender = process.env.SENDGRID_FROM_EMAIL || "pawan.kumar@galaxyweblinks.com";
     const customSubject = "{{sender_name}} left a hint for {{receiver_name}} at {{shop}}!";
 
     try {
@@ -210,7 +210,7 @@ test("Email Settings & Customization Test Suite", async (t) => {
   });
 
   await t.test("6. sendRewardEmail dispatches with configured confirmation sender email and subject line", async () => {
-    const verifiedSender = process.env.SENDGRID_FROM_EMAIL || "rajesh.verma@galaxyweblinks.com";
+    const verifiedSender = process.env.SENDGRID_FROM_EMAIL || "pawan.kumar@galaxyweblinks.com";
     const customSubject = "🎉 Woohoo {{sender_name}}! Here is code {{discount_code}} for {{discount_amount}}";
 
     try {

@@ -42,7 +42,7 @@ test("Referral Reward System Concurrency & Idempotency Suite", async (t) => {
     const { referral, token } = await createReferral({
       shop: TEST_SHOP,
       senderName: "Concurrency Tester",
-      senderEmail: "rajesh.verma@galaxyweblinks.com",
+      senderEmail: "pawan.kumar@galaxyweblinks.com",
       receiverName: "Friend B",
       receiverEmail: friendEmail,
       productUrl: "https://drop-a-hint-pczxxbw4.myshopify.com/products/selling-plans-ski-wax",
@@ -165,7 +165,7 @@ test("Referral Reward System Concurrency & Idempotency Suite", async (t) => {
     const { referral: refC } = await createReferral({
       shop: TEST_SHOP,
       senderName: "Concurrency Tester",
-      senderEmail: "rajesh.verma@galaxyweblinks.com",
+      senderEmail: "pawan.kumar@galaxyweblinks.com",
       receiverName: "Friend C",
       receiverEmail: friendC_Email,
       productUrl: "https://drop-a-hint-pczxxbw4.myshopify.com/products/selling-plans-ski-wax",
