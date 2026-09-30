@@ -140,7 +140,7 @@ export const action = async ({ request }) => {
         },
       });
 
-      const defaultSender = (process.env.SMTP_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || "no-reply@galaxyweblinks.com").toLowerCase();
+      const defaultSender = (process.env.SENDGRID_FROM_EMAIL || "jeyashree.r@galaxyweblinks.com").toLowerCase();
       const customSenders = [];
       if (senderEmail && senderEmail.toLowerCase() !== defaultSender) {
         customSenders.push(senderEmail);
@@ -151,7 +151,7 @@ export const action = async ({ request }) => {
       if (customSenders.length > 0) {
         return {
           success: true,
-          message: `Email settings saved. Note: Custom sender '${customSenders.join(", ")}' must be verified in Amazon SES before it can be used as the From address.`,
+          message: `Email settings saved. Note: Custom sender '${customSenders.join(", ")}' must be verified in SendGrid before it can be used as the From address.`,
         };
       }
 

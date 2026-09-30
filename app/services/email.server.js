@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 
 // ---------------------------------------------------------------------------
 // Input helpers
@@ -28,49 +28,11 @@ export function isValidEmail(email) {
 }
 
 // ---------------------------------------------------------------------------
-// Amazon SES SMTP
+// SendGrid
 // ---------------------------------------------------------------------------
 
 export function defaultFromEmail() {
-  return (
-    process.env.SMTP_FROM_EMAIL ||
-    process.env.SENDGRID_FROM_EMAIL ||
-    "no-reply@galaxyweblinks.com"
-  );
-}
-
-function defaultReplyTo() {
-  return process.env.SMTP_REPLY_TO || defaultFromEmail();
-}
-
-let transporter;
-
-function getTransporter() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host || !user || !pass) {
-    throw new Error(
-      "[SMTP] SMTP_HOST, SMTP_USER, and SMTP_PASS must be set in .env. Restart the server after updating them."
-    );
-  }
-  if (!transporter) {
-    const port = Number(process.env.SMTP_PORT || 465);
-    transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass },
-    });
-  }
-  return transporter;
-}
-
-function formatAddress(from) {
-  if (!from) return undefined;
-  if (typeof from === "string") return from;
-  if (from.name && from.email) return { name: from.name, address: from.email };
-  return from.email;
+  return process.env.SENDGRID_FROM_EMAIL || "jeyashree.r@galaxyweblinks.com";
 }
 
 function fromAddressOf(from) {
@@ -79,80 +41,91 @@ function fromAddressOf(from) {
   return from.email || "";
 }
 
+function initSendGrid() {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "[SendGrid] SENDGRID_API_KEY is not set. Add it to your environment and restart the server."
+    );
+  }
+  sgMail.setApiKey(apiKey);
+}
+
 /**
- * Sends one email through Amazon SES SMTP.
- * If a custom From address is not verified in SES, retries with the default From.
+ * Sends one email through SendGrid.
+ * If a custom From address is not verified, retries with the default From.
  *
  * @param {{ to, from, replyTo, subject, text, html }} mailOptions
  */
 async function dispatch(mailOptions) {
-  const maskedUser = process.env.SMTP_USER
-    ? `${process.env.SMTP_USER.slice(0, 4)}…${process.env.SMTP_USER.slice(-4)}`
-    : "(empty)";
+  initSendGrid();
 
-  console.log("[SMTP] ─────────────────────────────────────────────────");
-  console.log(`[SMTP] Host       : ${process.env.SMTP_HOST || "(missing)"}`);
-  console.log(`[SMTP] User       : ${maskedUser}`);
-  console.log(`[SMTP] From       : ${typeof mailOptions.from === "object" ? `${mailOptions.from.name} <${mailOptions.from.email}>` : mailOptions.from}`);
-  console.log(`[SMTP] To         : ${mailOptions.to}`);
-  if (mailOptions.replyTo) console.log(`[SMTP] Reply-To   : ${mailOptions.replyTo}`);
-  console.log(`[SMTP] Subject    : ${mailOptions.subject}`);
-  console.log("[SMTP] ─────────────────────────────────────────────────");
+  const apiKey = process.env.SENDGRID_API_KEY || "";
+  const maskedKey = apiKey ? `${"•".repeat(Math.max(0, apiKey.length - 4))}${apiKey.slice(-4)}` : "(empty)";
+  const fromLabel = typeof mailOptions.from === "object"
+    ? `${mailOptions.from.name} <${mailOptions.from.email}>`
+    : mailOptions.from;
+
+  console.log("[SendGrid] ─────────────────────────────────────────────────");
+  console.log(`[SendGrid] API Key    : ${maskedKey}`);
+  console.log(`[SendGrid] From       : ${fromLabel}`);
+  console.log(`[SendGrid] To         : ${mailOptions.to}`);
+  if (mailOptions.replyTo) console.log(`[SendGrid] Reply-To   : ${mailOptions.replyTo}`);
+  console.log(`[SendGrid] Subject    : ${mailOptions.subject}`);
+  console.log("[SendGrid] ─────────────────────────────────────────────────");
 
   console.log("[EMAIL] Template generated");
   console.log("[EMAIL] Provider request sent");
 
-  const sendOnce = (options) =>
-    getTransporter().sendMail({
+  const sendOnce = async (options) => {
+    const [response] = await sgMail.send({
       to: options.to,
-      from: formatAddress(options.from),
-      replyTo: options.replyTo || defaultReplyTo(),
+      from: options.from,
+      replyTo: options.replyTo || defaultFromEmail(),
       subject: options.subject,
       text: options.text,
       html: options.html,
     });
+    return response;
+  };
 
-  let info;
+  let response;
   try {
-    info = await sendOnce(mailOptions);
+    response = await sendOnce(mailOptions);
   } catch (err) {
-    const detail = err?.response || err?.message || String(err);
+    const sgErrors = err?.response?.body?.errors;
+    const detail = sgErrors?.map((e) => e.message).join("; ") || err.message || String(err);
     const fallbackFrom = defaultFromEmail();
     const currentFromEmail = fromAddressOf(mailOptions.from);
-    const unverified = /not verified|Email address is not verified|Message rejected/i.test(detail);
+    const unverified = /verified Sender Identity|not verified/i.test(detail);
 
     if (unverified && currentFromEmail && currentFromEmail.toLowerCase() !== fallbackFrom.toLowerCase()) {
-      console.warn(`[SMTP Warning] Sender '${currentFromEmail}' was rejected. Retrying from '${fallbackFrom}'.`);
+      console.warn(`[SendGrid] Sender '${currentFromEmail}' is not verified. Retrying from '${fallbackFrom}'.`);
       try {
-        info = await sendOnce({
+        response = await sendOnce({
           ...mailOptions,
           from: typeof mailOptions.from === "object"
             ? { ...mailOptions.from, email: fallbackFrom }
             : fallbackFrom,
           replyTo: mailOptions.replyTo || currentFromEmail,
         });
-        console.log(`[SMTP] Delivered via fallback sender (${fallbackFrom})`);
       } catch (fallbackErr) {
-        const fallbackDetail = fallbackErr?.response || fallbackErr?.message || String(fallbackErr);
+        const fallbackDetail = fallbackErr?.response?.body?.errors?.map((e) => e.message).join("; ") || fallbackErr.message;
         console.error("[EMAIL] sent=false");
-        console.error(`[SMTP] Fallback delivery failed: ${fallbackDetail}`);
         throw new Error(`Email delivery failed: ${fallbackDetail}`);
       }
     } else {
       console.error("[EMAIL] sent=false");
-      console.error(`[SMTP] Delivery failed: ${detail}`);
-      throw new Error(
-        unverified
-          ? `The sender email '${currentFromEmail || fallbackFrom}' is not verified in Amazon SES.`
-          : `Email delivery failed: ${detail}`
-      );
+      console.error(`[SendGrid] Delivery failed: ${detail}`);
+      throw new Error("Email delivery failed.");
     }
   }
 
+  const statusCode = response?.statusCode;
+  const messageId = response?.headers?.["x-message-id"] ?? "N/A";
   console.log("[EMAIL] Provider response received");
-  const messageId = info?.messageId || "N/A";
-  console.log(`[EMAIL] sent=true (message-id: ${messageId})`);
-  return { statusCode: 250, messageId };
+  console.log(`[EMAIL] sent=true (HTTP ${statusCode}, message-id: ${messageId})`);
+  return { statusCode, messageId };
 }
 
 // ---------------------------------------------------------------------------
@@ -453,7 +426,7 @@ export async function sendReferralEmail({
 
   const replyToEmail = (cleanConfiguredSender && isValidEmail(cleanConfiguredSender))
     ? cleanConfiguredSender
-    : defaultReplyTo();
+    : defaultFromEmail();
 
   return dispatch({
     to:      cleanReceiverEmail, // Friend Email
