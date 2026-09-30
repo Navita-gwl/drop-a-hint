@@ -173,9 +173,6 @@ export async function createReferral({
     where: {
       shop,
       senderEmail: cleanSenderEmail,
-      receiverEmail: cleanReceiverEmail,
-      ...(cleanProductId ? { productId: cleanProductId } : {}),
-      orderStatus: "Pending",
     },
     orderBy: { createdAt: "desc" },
   });
