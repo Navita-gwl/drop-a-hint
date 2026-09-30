@@ -169,6 +169,22 @@ export async function createReferral({
   if (!cleanReceiverName) throw new Error("Receiver Name is required");
   if (!isValidEmail(cleanReceiverEmail)) throw new Error("Valid Receiver Email is required");
 
+  const existingReferral = await prisma.referral.findFirst({
+    where: {
+      shop,
+      senderEmail: cleanSenderEmail,
+      receiverEmail: cleanReceiverEmail,
+      ...(cleanProductId ? { productId: cleanProductId } : {}),
+      orderStatus: "Pending",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (existingReferral) {
+    console.log(`[REFERRAL] duplicate blocked, reusing #${existingReferral.id}`);
+    return { referral: existingReferral, token: existingReferral.token, duplicate: true };
+  }
+
   // 1. Snapshot Reward Configuration at this moment
   let rewardType = "percentage";
   let rewardValue = "15";
