@@ -20,7 +20,6 @@
     style="display:none"
   ></span>
 </div>
-
 <div id="dah-modal-{{ block.id }}" class="dah-popup-model" style="display: none; position: fixed; z-index: 2147483647; left: 0; top: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; box-sizing: border-box; padding: 20px;">
   <div style="background-color: #fff; margin: auto; padding: 25px; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-family: sans-serif; position: relative; max-height: 90vh; overflow-y: auto;">
     <span id="dah-close-modal-{{ block.id }}" style="position: absolute; right: 20px; top: 15px; font-size: 24px; font-weight: bold; cursor: pointer; color: #666;">&times;</span>
@@ -176,6 +175,21 @@
       var form = document.getElementById('dah-refer-form-' + blockId);
       var submitBtn = document.getElementById('dah-submit-referral-' + blockId);
       var formMsg = document.getElementById('dah-form-msg-' + blockId);
+      var isSubmitting = false;
+
+      function setSubmitLocked(locked, label) {
+        if (!submitBtn) return;
+        submitBtn.disabled = locked;
+        submitBtn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+        submitBtn.style.cursor = locked ? 'not-allowed' : 'pointer';
+        submitBtn.style.opacity = locked ? '0.7' : '1';
+        submitBtn.innerText = label || (locked ? 'Submitting...' : 'Submit Referral');
+      }
+
+      function resetSubmitButton() {
+        isSubmitting = false;
+        setSubmitLocked(false, 'Submit Referral');
+      }
 
       if (modal && modal.parentElement !== document.body) {
         document.body.appendChild(modal);
@@ -229,6 +243,7 @@
       if (referBtn) {
         referBtn.addEventListener('click', function(e) {
           e.preventDefault();
+          if (!isSubmitting) resetSubmitButton();
           if (modal) modal.style.display = 'flex';
         });
       }
@@ -236,22 +251,23 @@
       if (closeBtn) {
         closeBtn.addEventListener('click', function() {
           if (modal) modal.style.display = 'none';
+          if (!isSubmitting) resetSubmitButton();
         });
       }
 
       window.addEventListener('click', function(e) {
         if (modal && e.target === modal) {
           modal.style.display = 'none';
+          if (!isSubmitting) resetSubmitButton();
         }
       });
 
       if (form) {
         form.addEventListener('submit', function(e) {
           e.preventDefault();
-          if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerText = 'Submitting...';
-          }
+          if (isSubmitting) return;
+          isSubmitting = true;
+          setSubmitLocked(true, 'Submitting...');
           if (formMsg) formMsg.style.display = 'none';
           
           var priceDataEl = document.getElementById('dah-price-data-' + blockId);
@@ -290,12 +306,8 @@
             });
           })
           .then(function(data) {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerText = 'Submit Referral';
-            }
-            
             if (data && data.success) {
+              setSubmitLocked(true, 'Submitted');
               if (formMsg) {
                 formMsg.style.color = '#008060';
                 formMsg.innerText = data.message || 'Referral submitted! An invitation email has been sent to your friend.';
@@ -305,8 +317,10 @@
               setTimeout(function() {
                 if (modal) modal.style.display = 'none';
                 if (formMsg) formMsg.style.display = 'none';
+                resetSubmitButton();
               }, 2500);
             } else {
+              resetSubmitButton();
               if (formMsg) {
                 formMsg.style.color = '#d32f2f';
                 formMsg.innerText = (data && (data.error || data.message)) ? (data.error || data.message) : 'Could not submit referral.';
@@ -316,10 +330,7 @@
           })
           .catch(function(err) {
             console.error('[Drop A Hint] Submission error:', err);
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerText = 'Submit Referral';
-            }
+            resetSubmitButton();
             if (formMsg) {
               formMsg.style.color = '#d32f2f';
               formMsg.innerText = err.message || 'An unexpected error occurred. Please try again.';
