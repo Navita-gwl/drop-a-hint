@@ -186,8 +186,14 @@
         submitBtn.innerText = label || (locked ? 'Submitting...' : 'Submit Referral');
       }
 
-      function resetSubmitButton() {
+      function resetReferralForm() {
+        if (isSubmitting) return;
         isSubmitting = false;
+        if (form) form.reset();
+        if (formMsg) {
+          formMsg.style.display = 'none';
+          formMsg.innerText = '';
+        }
         setSubmitLocked(false, 'Submit Referral');
       }
 
@@ -243,7 +249,7 @@
       if (referBtn) {
         referBtn.addEventListener('click', function(e) {
           e.preventDefault();
-          if (!isSubmitting) resetSubmitButton();
+          resetReferralForm();
           if (modal) modal.style.display = 'flex';
         });
       }
@@ -251,14 +257,14 @@
       if (closeBtn) {
         closeBtn.addEventListener('click', function() {
           if (modal) modal.style.display = 'none';
-          if (!isSubmitting) resetSubmitButton();
+          resetReferralForm();
         });
       }
 
       window.addEventListener('click', function(e) {
         if (modal && e.target === modal) {
           modal.style.display = 'none';
-          if (!isSubmitting) resetSubmitButton();
+          resetReferralForm();
         }
       });
 
@@ -306,32 +312,23 @@
             });
           })
           .then(function(data) {
-            var referralSaved = data && (data.success || data.submitted || (data.referral && data.referral.id));
-            if (referralSaved) {
-              isSubmitting = false;
-              setSubmitLocked(true, 'Submitted');
-              if (formMsg) {
-                var emailFailed = data.emailSent === false || (data.message && data.message.indexOf('email delivery failed') !== -1);
-                formMsg.style.color = emailFailed ? '#d32f2f' : '#008060';
-                formMsg.innerText = data.message || data.error || 'Referral submitted! An invitation email has been sent to your friend.';
-                formMsg.style.display = 'block';
-              }
-              form.reset();
-            } else {
-              resetSubmitButton();
-              if (formMsg) {
-                formMsg.style.color = '#d32f2f';
-                formMsg.innerText = (data && (data.error || data.message)) ? (data.error || data.message) : 'Could not submit referral.';
-                formMsg.style.display = 'block';
-              }
+            isSubmitting = false;
+            setSubmitLocked(false, 'Submit Referral');
+            var rawMsg = (data && (data.message || data.error)) || '';
+            var emailFailed = data && (data.emailSent === false || /email delivery failed|sendgrid|credits exceeded/i.test(rawMsg));
+            if (formMsg) {
+              formMsg.style.color = (data && data.success && !emailFailed && !data.duplicate) ? '#008060' : '#d32f2f';
+              formMsg.innerText = emailFailed ? 'Email delivery failed.' : (rawMsg || 'Referral submitted! An invitation email has been sent to your friend.');
+              formMsg.style.display = 'block';
             }
           })
           .catch(function(err) {
             console.error('[Drop A Hint] Submission error:', err);
-            resetSubmitButton();
+            isSubmitting = false;
+            setSubmitLocked(false, 'Submit Referral');
             if (formMsg) {
               formMsg.style.color = '#d32f2f';
-              formMsg.innerText = err.message || 'An unexpected error occurred. Please try again.';
+              formMsg.innerText = 'Email delivery failed.';
               formMsg.style.display = 'block';
             }
           });

@@ -218,7 +218,7 @@ export const action = async ({ request }) => {
           success: true,
           submitted: true,
           duplicate: true,
-          message: "This referral was already submitted.",
+          message: "You already submitted a referral. Only one referral is allowed.",
           referral: {
             id: referral.id,
             token: referral.token,
@@ -281,7 +281,7 @@ export const action = async ({ request }) => {
           success: true,
           submitted: true,
           emailSent: false,
-          message: `Referral saved, but email delivery failed: ${emailErrorMessage}`,
+          message: "Email delivery failed.",
           referral: {
             id: referral.id,
             token: referral.token,
