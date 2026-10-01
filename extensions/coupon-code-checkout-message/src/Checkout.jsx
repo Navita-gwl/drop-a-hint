@@ -6,10 +6,20 @@ export default async () => {
   render(<Extension />, document.body);
 };
 
+const ALREADY_APPLIED_MESSAGE = "This referral code has already been applied.";
+
+function appliedDiscountCodes() {
+  const fromCheckout = shopify?.discountCodes?.value || [];
+  return fromCheckout
+    .map((entry) => String(entry?.code || "").trim().toUpperCase())
+    .filter(Boolean);
+}
+
 function Extension() {
   const [inputCode, setInputCode] = useState("");
   const [inputError, setInputError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
+  const [appliedCodes, setAppliedCodes] = useState([]);
 
   const handleValidateInput = async (e) => {
     if (e && typeof e.preventDefault === "function") {
@@ -19,6 +29,14 @@ function Extension() {
     const clean = inputCode.trim().toUpperCase();
     setIsChecking(true);
     setInputError("");
+
+    const alreadyApplied =
+      appliedCodes.includes(clean) || appliedDiscountCodes().includes(clean);
+    if (alreadyApplied) {
+      setInputError(ALREADY_APPLIED_MESSAGE);
+      setIsChecking(false);
+      return;
+    }
 
     try {
       // Validate with app backend first
@@ -30,7 +48,6 @@ function Extension() {
 
       if (data && !data.valid && data.error) {
         setInputError(data.error);
-        setIsChecking(false);
         return;
       }
 
@@ -43,8 +60,15 @@ function Extension() {
         });
 
         if (result?.type === "error") {
-          setInputError(result.message || "Failed to apply discount code");
+          const message = /already (been )?applied/i.test(result.message || "")
+            ? ALREADY_APPLIED_MESSAGE
+            : result.message || "Failed to apply discount code";
+          if (message === ALREADY_APPLIED_MESSAGE) {
+            setAppliedCodes((current) => (current.includes(clean) ? current : [...current, clean]));
+          }
+          setInputError(message);
         } else {
+          setAppliedCodes((current) => (current.includes(clean) ? current : [...current, clean]));
           setInputCode("");
           setInputError("");
         }
