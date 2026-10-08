@@ -76,8 +76,6 @@
       console.warn('[Drop A Hint] Could not read referral token:', e);
     }
 
-    console.log('[Drop A Hint] Referral token found:', referralToken || '(none — will match by email/customer ID)');
-
     // -------------------------------------------------------------------------
     // Build order payload and POST to complete_order endpoint
     // -------------------------------------------------------------------------
@@ -100,8 +98,6 @@
           : [],
       }
     };
-
-    console.log('[Drop A Hint] Calling complete_order with payload:', JSON.stringify(orderPayload));
 
     fetch('/apps/drop-a-hint?action=complete_order', {
       method:  'POST',
@@ -129,7 +125,7 @@
         } catch(e) {}
       } else {
         // No matching referral for this order — normal for non-referred orders
-        console.log('[Drop A Hint] complete_order response:', data.error || JSON.stringify(data));
+        console.log('[Drop A Hint] complete_order response:', data.error || 'No matching referral');
       }
     })
     .catch(function(err) {

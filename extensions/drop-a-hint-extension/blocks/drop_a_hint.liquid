@@ -78,7 +78,6 @@
         localStorage.setItem('dah_ref_token', refToken);
         sessionStorage.setItem('dah_ref', refToken);
         document.cookie = "dah_ref=" + encodeURIComponent(refToken) + "; path=/; max-age=2592000; SameSite=Lax";
-        console.log('[Drop A Hint] Referral attribution saved:', refToken);
       } catch (err) {
         console.warn('[Drop A Hint] Storage write warning:', err);
       }

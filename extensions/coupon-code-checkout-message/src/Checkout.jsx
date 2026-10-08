@@ -74,7 +74,7 @@ function Extension() {
         }
       }
     } catch (err) {
-      console.warn("[Apply Discount Error]:", err);
+      console.warn("[Apply Discount Error]");
       setInputError("Failed to apply discount code");
     } finally {
       setIsChecking(false);
