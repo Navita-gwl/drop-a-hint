@@ -67,7 +67,7 @@ async function dispatch(mailOptions) {
   console.log(`[SendGrid] From       : ${typeof mailOptions.from === "object" ? `${mailOptions.from.name} <${mailOptions.from.email}>` : mailOptions.from}`);
   console.log(`[SendGrid] To         : ${mailOptions.to}`);
   if (mailOptions.replyTo) console.log(`[SendGrid] Reply-To   : ${mailOptions.replyTo}`);
-  console.log(`[SendGrid] Subject    : ${mailOptions.subject}`);
+  console.log("[SendGrid] Subject    : (omitted)");
   console.log("[SendGrid] ─────────────────────────────────────────────────");
 
   console.log("[EMAIL] Template generated");

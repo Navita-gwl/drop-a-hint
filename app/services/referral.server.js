@@ -68,7 +68,7 @@ export async function createShopifyDiscountCode({
       : null;
 
   try {
-    console.log(`[REWARD-DISCOUNT] Creating Basic Code Discount in Shopify: code=${code}, type=${discountType}, value=${numValue}`);
+    console.log(`[REWARD-DISCOUNT] Creating Basic Code Discount in Shopify: type=${discountType}, value=${numValue}`);
 
     const mutation = `#graphql
       mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
@@ -131,7 +131,7 @@ export async function createShopifyDiscountCode({
     const finalCode =
       data?.data?.discountCodeBasicCreate?.codeDiscountNode?.codeDiscount?.codes?.nodes?.[0]?.code || code;
 
-    console.log(`[REWARD-DISCOUNT] ✅ Shopify Discount Code created successfully: ${finalCode} (ID: ${discountNodeId})`);
+    console.log(`[REWARD-DISCOUNT] ✅ Shopify Discount Code created successfully (ID: ${discountNodeId})`);
 
     return { success: true, discountCodeId: discountNodeId, code: finalCode };
   } catch (err) {
@@ -255,14 +255,12 @@ export async function createReferral({
 
   console.log("\n==================== [REFERRAL CREATED] ====================");
   console.log(`[REFERRAL] created`);
-  console.log(`[REFERRAL] token=${token}`);
   console.log(`[REFERRAL] Referral ID:          #${referral.id}`);
   console.log(`[REFERRAL] Shop:                 ${shop}`);
   console.log(`[REFERRAL] Referrer (A):         ${cleanSenderName} (${cleanSenderEmail})`);
   console.log(`[REFERRAL] Friend (B):           ${cleanReceiverName} (${cleanReceiverEmail})`);
   console.log(`[REFERRAL] Product ID:           ${cleanProductId || "N/A"}`);
   console.log(`[REFERRAL] Product Title:        ${cleanProductTitle || "N/A"}`);
-  console.log(`[REFERRAL] Token Generated:      ${token}`);
   console.log(`[REFERRAL] Reward Snapshot:      ${rewardValue}${rewardType === "percentage" ? "%" : " Fixed"}`);
   console.log(`[REFERRAL] Initial Status:       Order=${referral.orderStatus}, Reward=${referral.rewardStatus}`);
   console.log("============================================================\n");
@@ -417,7 +415,7 @@ async function executeIssueReferralReward({ shop, adminGraphql, order, referralI
     currentReferral.orderStatus === "Reward Redeemed" ||
     (currentReferral.discountCode && currentReferral.discountCode.startsWith("REF-"))
   ) {
-    console.log(`[REWARD] existing reward found=true (code: ${currentReferral.discountCode})`);
+    console.log(`[REWARD] existing reward found=true`);
     console.log(`[REWARD] discount creation skipped`);
 
     // Ensure email is sent if discount exists but email was previously pending/failed
@@ -443,7 +441,7 @@ async function executeIssueReferralReward({ shop, adminGraphql, order, referralI
   });
 
   if (existingLog) {
-    console.log(`[REWARD] existing RewardIssuanceLog found (code: ${existingLog.discountCode})`);
+    console.log(`[REWARD] existing RewardIssuanceLog found`);
     console.log(`[REWARD] discount creation skipped`);
     const updated = await prisma.referral.update({
       where: { id: referralId },
@@ -544,7 +542,7 @@ async function executeIssueReferralReward({ shop, adminGraphql, order, referralI
   }
 
   const finalCouponCode = shopifyDiscountResult.code || rewardCouponCode;
-  console.log(`[REWARD] discount created=${finalCouponCode}`);
+  console.log(`[REWARD] discount created=true`);
 
   // 6. ATOMIC SAVE TO DATABASE & ISSUANCE LOG (Single Database Transaction)
   let updatedReferral;
@@ -702,8 +700,8 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
   console.log(`[ORDER] Customer Email:     ${customerEmail || "(none)"}`);
   console.log(`[ORDER] Customer ID:        ${shopifyCustomerId || "(none)"}`);
   console.log(`[ORDER] Financial Status:   ${financialStatus} (isPaid: ${isPaid})`);
-  console.log(`[ORDER] Extracted Token:    ${noteToken || "(none)"}`);
-  console.log(`[ORDER] Discount Codes:     ${discountCodes.join(", ") || "(none)"}`);
+  console.log(`[ORDER] Extracted Token:    ${noteToken ? "present" : "(none)"}`);
+  console.log(`[ORDER] Discount Codes:     ${discountCodes.length ? `${discountCodes.length} applied` : "(none)"}`);
   console.log(`[ORDER] Product IDs in Cart:${orderProductIds.join(", ") || "(none)"}`);
   console.log("==================================================================\n");
 
@@ -734,7 +732,7 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
           },
         });
 
-        console.log(`[ORDER-REDEMPTION] ✅ Reward discount code '${code}' was REDEEMED in order ${orderNumber}!`);
+        console.log(`[ORDER-REDEMPTION] ✅ Reward discount code was REDEEMED in order ${orderNumber}!`);
       }
     }
   }
@@ -757,8 +755,8 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
     });
 
     if (matchingReferral) {
-      console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId} customerEmail=${customerEmail} lineItemProductIds=${orderProductIds.join(",")} referralToken=${noteToken} referralId=${matchingReferral.id}`);
-      console.log(`[REFERRAL-MATCH] ✅ Matched by unique token '${noteToken}' → Referral #${matchingReferral.id}`);
+      console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId} customerEmail=${customerEmail} lineItemProductIds=${orderProductIds.join(",")} referralToken=present referralId=${matchingReferral.id}`);
+      console.log(`[REFERRAL-MATCH] ✅ Matched by unique token → Referral #${matchingReferral.id}`);
     }
   }
 
@@ -818,7 +816,7 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
       }
 
       if (matchingReferral) {
-        console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId} customerEmail=${customerEmail} lineItemProductIds=${orderProductIds.join(",")} referralToken=${noteToken || "none"} referralId=${matchingReferral.id}`);
+        console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId} customerEmail=${customerEmail} lineItemProductIds=${orderProductIds.join(",")} referralToken=${noteToken ? "present" : "none"} referralId=${matchingReferral.id}`);
         console.log(`[REFERRAL-MATCH] ✅ Matched by email '${customerEmail}' → Referral #${matchingReferral.id}`);
       }
     }
@@ -966,7 +964,7 @@ export async function reconcileReferralById({ shop, referralId, adminGraphql }) 
     return { success: false, error: "No Shopify Admin API access available" };
   }
 
-  console.log(`\n[RECONCILE] Scanning Shopify orders for Referral #${referral.id} (Token: ${referral.token}, Friend: ${referral.receiverEmail})`);
+  console.log(`\n[RECONCILE] Scanning Shopify orders for Referral #${referral.id} (Friend: ${referral.receiverEmail})`);
 
   // Query recent Shopify orders (last 50 orders)
   const ordersQuery = `#graphql
@@ -1033,7 +1031,7 @@ export async function reconcileReferralById({ shop, referralId, adminGraphql }) 
 
     if (hasNoteToken) {
       matchedOrder = o;
-      matchReason = `Order note attribute token '${referral.token}'`;
+      matchReason = "Order note attribute token";
       break;
     }
 
@@ -1048,7 +1046,7 @@ export async function reconcileReferralById({ shop, referralId, adminGraphql }) 
 
     if (hasLineToken) {
       matchedOrder = o;
-      matchReason = `Line item property token '${referral.token}'`;
+      matchReason = "Line item property token";
       break;
     }
   }

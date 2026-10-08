@@ -316,7 +316,14 @@ export const action = async ({ request }) => {
         return jsonResponse({ success: false, error: "No matching pending referral found for this order" });
       }
 
-      return jsonResponse({ success: true, referral: updatedReferral });
+      return jsonResponse({
+        success: true,
+        referral: {
+          id: updatedReferral.id,
+          orderStatus: updatedReferral.orderStatus,
+          rewardStatus: updatedReferral.rewardStatus,
+        },
+      });
     }
 
     return jsonResponse({ success: false, error: "Invalid action" });
