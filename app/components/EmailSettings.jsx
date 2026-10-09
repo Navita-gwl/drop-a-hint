@@ -8,7 +8,7 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-export function EmailSettings({ initialSettings, onSave, showToast }) {
+export function EmailSettings({ initialSettings, onSave, showToast, emailProvider = "sendgrid" }) {
   const [savedSettings, setSavedSettings] = useState({
     senderEmail: initialSettings?.senderEmail || "",
     emailSubject: initialSettings?.emailSubject || "",
@@ -147,14 +147,25 @@ export function EmailSettings({ initialSettings, onSave, showToast }) {
 
       <Form onSubmit={handleSubmit}>
         <BlockStack gap="600">
-          <Banner title="SendGrid Sender Identity Requirement" tone="info">
-            <p>
-              Your email provider (SendGrid) requires any custom <strong>Sending Email</strong> (or domain) to be verified under <strong>SendGrid &gt; Settings &gt; Sender Authentication</strong> before sending emails.
-            </p>
-            <p style={{ marginTop: "4px" }}>
-              If an unverified sending email is used, SendGrid will reject outgoing emails. Leave blank to use your default verified sender.
-            </p>
-          </Banner>
+          {emailProvider === "smtp" ? (
+            <Banner title="SMTP sending address" tone="info">
+              <p>
+                Mail is sent through the SMTP server in your environment. A custom <strong>Sending Email</strong> must be an address that server is allowed to send from.
+              </p>
+              <p style={{ marginTop: "4px" }}>
+                Leave the field blank to use the default address from <strong>SMTP_FROM_EMAIL</strong>.
+              </p>
+            </Banner>
+          ) : (
+            <Banner title="SendGrid Sender Identity Requirement" tone="info">
+              <p>
+                Your email provider (SendGrid) requires any custom <strong>Sending Email</strong> (or domain) to be verified under <strong>SendGrid &gt; Settings &gt; Sender Authentication</strong> before sending emails.
+              </p>
+              <p style={{ marginTop: "4px" }}>
+                If an unverified sending email is used, SendGrid will reject outgoing emails. Leave blank to use your default verified sender.
+              </p>
+            </Banner>
+          )}
           {/* Subsection A: Product Referral Sent */}
           <Card padding="500">
             <BlockStack gap="400">
@@ -255,4 +266,5 @@ EmailSettings.propTypes = {
   }),
   onSave: PropTypes.func,
   showToast: PropTypes.func,
+  emailProvider: PropTypes.oneOf(["smtp", "sendgrid"]),
 };

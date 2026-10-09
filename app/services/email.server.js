@@ -1,4 +1,5 @@
 import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
 
 // ---------------------------------------------------------------------------
 // Input helpers
@@ -27,14 +28,86 @@ export function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-// ---------------------------------------------------------------------------
-// SendGrid client initialisation
-// ---------------------------------------------------------------------------
+const FALLBACK_FROM_EMAIL = "pawan.kumar@galaxyweblinks.com";
+
+function readSmtpSettings() {
+  const host = (process.env.SMTP_HOST || "").trim();
+  const user = (process.env.SMTP_USER || "").trim();
+  const pass = process.env.SMTP_PASS || "";
+  const from = (process.env.SMTP_FROM_EMAIL || "").trim();
+  const parsedPort = Number.parseInt(process.env.SMTP_PORT || "587", 10);
+  const port = Number.isFinite(parsedPort) ? parsedPort : 587;
+  const secureFlag = (process.env.SMTP_SECURE || "").trim().toLowerCase();
+  const secure = secureFlag === "true" || secureFlag === "1" || port === 465;
+  return { host, user, pass, from, port, secure };
+}
+
+function hasSmtpCredentials() {
+  const smtp = readSmtpSettings();
+  return Boolean(smtp.host && smtp.user && smtp.pass);
+}
+
+function hasSendGridCredentials() {
+  return Boolean((process.env.SENDGRID_API_KEY || "").trim());
+}
 
 /**
- * Reads SENDGRID_API_KEY from the environment and configures the client.
- * Throws a descriptive error if the key is absent so issues surface early.
+ * SMTP is used when EMAIL_PROVIDER=smtp, or when SMTP_HOST, SMTP_USER, and
+ * SMTP_PASS are all set and EMAIL_PROVIDER is not sendgrid.
+ * SendGrid is used when EMAIL_PROVIDER=sendgrid, or when only SENDGRID_API_KEY is set.
  */
+export function resolveEmailProvider() {
+  const explicit = (process.env.EMAIL_PROVIDER || "").trim().toLowerCase();
+
+  if (explicit === "smtp") {
+    if (!hasSmtpCredentials()) {
+      throw new Error(
+        "[Email] EMAIL_PROVIDER is smtp, but SMTP_HOST, SMTP_USER, and SMTP_PASS must all be set."
+      );
+    }
+    return "smtp";
+  }
+
+  if (explicit === "sendgrid") {
+    if (!hasSendGridCredentials()) {
+      throw new Error(
+        "[Email] EMAIL_PROVIDER is sendgrid, but SENDGRID_API_KEY is not set."
+      );
+    }
+    return "sendgrid";
+  }
+
+  if (hasSmtpCredentials()) return "smtp";
+  if (hasSendGridCredentials()) return "sendgrid";
+
+  throw new Error(
+    "[Email] No mail provider configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS, or set SENDGRID_API_KEY."
+  );
+}
+
+export function getDefaultFromEmail() {
+  let provider = hasSendGridCredentials() ? "sendgrid" : "smtp";
+  try {
+    provider = resolveEmailProvider();
+  } catch {
+    // Fall through to whichever credential set is present.
+  }
+
+  if (provider === "smtp") {
+    const smtp = readSmtpSettings();
+    return smtp.from || smtp.user || process.env.SENDGRID_FROM_EMAIL || FALLBACK_FROM_EMAIL;
+  }
+
+  return process.env.SENDGRID_FROM_EMAIL || readSmtpSettings().from || FALLBACK_FROM_EMAIL;
+}
+
+function formatFromAddress(from) {
+  if (from && typeof from === "object") {
+    return from.name ? `"${from.name.replace(/"/g, "")}" <${from.email}>` : from.email;
+  }
+  return from;
+}
+
 function initSendGrid() {
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) {
@@ -46,17 +119,70 @@ function initSendGrid() {
   sgMail.setApiKey(apiKey);
 }
 
-// ---------------------------------------------------------------------------
-// Internal: dispatch a single message through the SendGrid API
-// ---------------------------------------------------------------------------
-
 /**
- * Sends one email via SendGrid and returns the API response.
- * Throws on any error so callers can decide how to surface it.
+ * Sends one email through the provider selected from the environment.
  *
  * @param {{ to, from, replyTo, subject, text, html }} mailOptions
  */
 async function dispatch(mailOptions) {
+  const provider = resolveEmailProvider();
+  if (provider === "smtp") {
+    return dispatchSmtp(mailOptions);
+  }
+  return dispatchSendGrid(mailOptions);
+}
+
+async function dispatchSmtp(mailOptions) {
+  const smtp = readSmtpSettings();
+  const transporter = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    auth: {
+      user: smtp.user,
+      pass: smtp.pass,
+    },
+  });
+
+  console.log("[SMTP] ─────────────────────────────────────────────────");
+  console.log(`[SMTP] Host       : ${smtp.host}:${smtp.port}`);
+  console.log(`[SMTP] From       : ${formatFromAddress(mailOptions.from)}`);
+  console.log(`[SMTP] To         : ${mailOptions.to}`);
+  if (mailOptions.replyTo) console.log(`[SMTP] Reply-To   : ${mailOptions.replyTo}`);
+  console.log("[SMTP] Subject    : (omitted)");
+  console.log("[SMTP] ─────────────────────────────────────────────────");
+  console.log("[EMAIL] Template generated");
+  console.log("[EMAIL] Provider request sent");
+
+  let info;
+  try {
+    info = await transporter.sendMail({
+      to: mailOptions.to,
+      from: formatFromAddress(mailOptions.from),
+      replyTo: mailOptions.replyTo,
+      subject: mailOptions.subject,
+      text: mailOptions.text,
+      html: mailOptions.html,
+    });
+  } catch (err) {
+    console.error("[EMAIL] sent=false");
+    console.error(`[SMTP] Delivery failed: ${err.message || err}`);
+    throw new Error(`SMTP delivery failed: ${err.message || err}`);
+  }
+
+  const rejected = info.rejected || [];
+  if (rejected.length > 0) {
+    console.error("[EMAIL] sent=false");
+    throw new Error(`SMTP delivery failed: rejected ${rejected.join(", ")}`);
+  }
+
+  const messageId = info.messageId || "N/A";
+  console.log("[EMAIL] Provider response received");
+  console.log(`[EMAIL] sent=true (SMTP, message-id: ${messageId})`);
+  return { statusCode: 202, messageId };
+}
+
+async function dispatchSendGrid(mailOptions) {
   initSendGrid();
 
   const apiKey = process.env.SENDGRID_API_KEY || "";
@@ -308,7 +434,7 @@ export async function sendSupportEmail({ name, email, phone, subject, message, s
 
   // Target recipient email address: pawan.kumar@galaxyweblinks.com
   const to        = process.env.SUPPORT_RECIPIENT_EMAIL || "pawan.kumar@galaxyweblinks.com";
-  const fromEmail = process.env.SENDGRID_FROM_EMAIL     || "pawan.kumar@galaxyweblinks.com";
+  const fromEmail = getDefaultFromEmail();
 
   const from = {
     email: fromEmail,
@@ -375,7 +501,7 @@ export async function sendReferralEmail({
   const cleanShop                = sanitizeInput(shop)                 || "Our Store";
 
   // Debug log final email pricing before dispatch
-  console.log('[SendGrid Referral] Pricing to be rendered in email:');
+  console.log("[EMAIL] Pricing to be rendered in email:");
   console.log('  Sale Price       :', cleanProductPrice || '(none)');
   console.log('  Compare-At Price :', cleanProductCompareAtPrice || '(none)');
   console.log('  On Sale?         :', !!(cleanProductCompareAtPrice && cleanProductCompareAtPrice !== cleanProductPrice));
@@ -387,11 +513,11 @@ export async function sendReferralEmail({
     throw new Error("A valid Referrer Email is required.");
   }
 
-  // Sender email: use admin configuredSenderEmail if set & valid, else fallback to SendGrid default
+  // Sender email: use admin configuredSenderEmail if set & valid, else the active provider default
   const cleanConfiguredSender = sanitizeInput(configuredSenderEmail);
   const fromEmail = (cleanConfiguredSender && isValidEmail(cleanConfiguredSender))
     ? cleanConfiguredSender
-    : (process.env.SENDGRID_FROM_EMAIL || "pawan.kumar@galaxyweblinks.com");
+    : getDefaultFromEmail();
 
   const from = {
     email: fromEmail,
@@ -482,11 +608,11 @@ export async function sendRewardEmail({
   console.log(`[EMAIL] reward email trigger started`);
   console.log(`[EMAIL] recipient=${maskedRecipient}`);
 
-  // Sender email: use admin configuredSenderEmail if set & valid, else fallback to SendGrid default
+  // Sender email: use admin configuredSenderEmail if set & valid, else the active provider default
   const cleanConfiguredSender = sanitizeInput(configuredSenderEmail);
   const fromEmail = (cleanConfiguredSender && isValidEmail(cleanConfiguredSender))
     ? cleanConfiguredSender
-    : (process.env.SENDGRID_FROM_EMAIL || "pawan.kumar@galaxyweblinks.com");
+    : getDefaultFromEmail();
 
   const from = {
     email: fromEmail,
