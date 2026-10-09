@@ -5,6 +5,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { ensureWebhookSubscriptions } from "../services/webhooks.server";
 import { reconcileReferralById, retryRewardEmail } from "../services/referral.server";
+import { getDefaultFromEmail, resolveEmailProvider } from "../services/email.server";
 import dropAHintStyles from "../styles/drop-a-hint.css?url";
 
 import { ReferralTable } from "../components/ReferralTable";
@@ -73,6 +74,13 @@ export const loader = async ({ request }) => {
     },
     productDiscountRules,
     shop,
+    emailProvider: (() => {
+      try {
+        return resolveEmailProvider();
+      } catch {
+        return "sendgrid";
+      }
+    })(),
   };
 };
 
@@ -140,7 +148,7 @@ export const action = async ({ request }) => {
         },
       });
 
-      const defaultSender = (process.env.SENDGRID_FROM_EMAIL || "pawan.kumar@galaxyweblinks.com").toLowerCase();
+      const defaultSender = getDefaultFromEmail().toLowerCase();
       const customSenders = [];
       if (senderEmail && senderEmail.toLowerCase() !== defaultSender) {
         customSenders.push(senderEmail);
@@ -149,10 +157,24 @@ export const action = async ({ request }) => {
         customSenders.push(confirmationSenderEmail);
       }
 
-      if (customSenders.length > 0) {
+      let emailProvider = "sendgrid";
+      try {
+        emailProvider = resolveEmailProvider();
+      } catch {
+        emailProvider = "sendgrid";
+      }
+
+      if (customSenders.length > 0 && emailProvider === "sendgrid") {
         return {
           success: true,
           message: `Email settings saved. Note: Custom sender '${customSenders.join(", ")}' must be verified in SendGrid as a Sender Identity to ensure delivery.`,
+        };
+      }
+
+      if (customSenders.length > 0 && emailProvider === "smtp") {
+        return {
+          success: true,
+          message: `Email settings saved. The SMTP server must allow sending from '${customSenders.join(", ")}'.`,
         };
       }
 
@@ -194,7 +216,7 @@ export const action = async ({ request }) => {
 };
 
 export default function Index() {
-  const { referrals: initialReferrals, settings, productDiscountRules } = useLoaderData();
+  const { referrals: initialReferrals, settings, productDiscountRules, emailProvider } = useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -385,6 +407,7 @@ export default function Index() {
                 aria-labelledby="tab-email-settings"
               >
                 <EmailSettings
+                  emailProvider={emailProvider}
                   initialSettings={settings}
                   onSave={(newSettings) => {
                     submit(
