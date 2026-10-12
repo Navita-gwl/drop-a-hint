@@ -49,6 +49,7 @@ export async function ensureWebhookSubscriptions({ shop, adminGraphql }) {
       { topic: "ORDERS_PAID", subpath: "orders/paid" },
       { topic: "ORDERS_CREATE", subpath: "orders/create" },
       { topic: "ORDERS_CANCELLED", subpath: "orders/cancelled" },
+      { topic: "DISCOUNTS_DELETE", subpath: "discounts/delete" },
     ];
 
     const results = [];
