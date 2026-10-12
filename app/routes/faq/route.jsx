@@ -2,12 +2,12 @@ import { Link } from "react-router";
 
 import styles from "./faq.module.css";
 
-const APP_NAME = "Drop A Hint";
+const APP_NAME = "Drop a Hint Pro";
 const COMPANY_NAME = "Galaxy Web Links";
 
 const faqs = [
   {
-    question: "What does Drop A Hint do?",
+    question: "What does Drop a Hint Pro do?",
     answer: (
       <p>
         {APP_NAME} lets a shopper refer a product to a friend. If that friend buys the product, the
@@ -16,16 +16,16 @@ const faqs = [
     ),
   },
   {
-    question: "How do I add Drop A Hint to my store?",
+    question: "How do I add Drop a Hint Pro to my store?",
     answer: (
       <>
         <p>In the Shopify admin, open Online Store, then Themes, then Customize.</p>
         <ul>
           <li>
-            Turn on the <strong>Drop A Hint</strong> app embed and save.
+            Turn on the <strong>Drop a Hint Pro</strong> app embed and save.
           </li>
           <li>
-            On the default product template, add the <strong>Drop A Hint</strong> block near the Add
+            On the default product template, add the <strong>Drop a Hint Pro</strong> block near the Add
             to cart button.
           </li>
           <li>Save the theme, then open a product page and submit a test referral.</li>
