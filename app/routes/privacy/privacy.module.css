@@ -1,0 +1,93 @@
+.page {
+  min-height: 100%;
+  background: #f4f6f8;
+  color: #1a1c1e;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+.container {
+  max-width: 46rem;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e1e3e5;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  padding: 2.5rem 2rem 2rem;
+}
+
+.header {
+  border-bottom: 1px solid #e1e3e5;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0 0 0.75rem;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.subtitle,
+.section p,
+.footer p {
+  margin: 0 0 0.85rem;
+  line-height: 1.6;
+}
+
+.lastUpdated {
+  margin: 0;
+  color: #5c5f62;
+  font-size: 0.95rem;
+}
+
+.section {
+  margin-bottom: 1.75rem;
+}
+
+.section h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.2rem;
+  line-height: 1.35;
+}
+
+.section ul {
+  margin: 0 0 0.85rem;
+  padding-left: 1.25rem;
+}
+
+.section li {
+  margin-bottom: 0.45rem;
+  line-height: 1.55;
+}
+
+.section a {
+  color: #008060;
+}
+
+.footer {
+  border-top: 1px solid #e1e3e5;
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  color: #5c5f62;
+}
+
+.footer a {
+  color: #008060;
+}
+
+@media only screen and (max-width: 40rem) {
+  .page {
+    padding: 0;
+  }
+
+  .container {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1.5rem 1.1rem 2rem;
+  }
+
+  .title {
+    font-size: 1.65rem;
+  }
+}
