@@ -2,7 +2,7 @@ import { Link } from "react-router";
 
 import styles from "./privacy.module.css";
 
-const APP_NAME = "Drop A Hint";
+const APP_NAME = "Drop a Hint Pro";
 const CONTACT_EMAIL = "vinod.khajja@galaxyweblinks.in";
 
 export const meta = () => [
@@ -48,8 +48,8 @@ export default function PrivacyPolicyPage() {
             information to: Communicate with you; Optimize or improve the App; and Provide you with
             information or advertising relating to our products or services. If you do not wish to
             receive advertising relating to our products and services, write an e-mail to{" "}
-            <a href={`mailto:${CONTACT_EMAIL}?subject=Drop%20a%20hint%20Opt-out`}>{CONTACT_EMAIL}</a>{" "}
-            with the subject &quot;Drop a hint Opt-out&quot;.
+            <a href={`mailto:${CONTACT_EMAIL}?subject=Drop%20a%20Hint%20Pro%20Opt-out`}>{CONTACT_EMAIL}</a>{" "}
+            with the subject &quot;Drop a Hint Pro Opt-out&quot;.
           </p>
         </section>
 
