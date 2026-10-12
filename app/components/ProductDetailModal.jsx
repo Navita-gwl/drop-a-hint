@@ -175,7 +175,15 @@ export function ProductDetailModal({
               <BlockStack gap="100">
                 <Text variant="bodySm" tone="subdued" as="span">Reward Status</Text>
                 <InlineStack>
-                  <Badge tone={item.rewardIssued || item.rewardStatus === "Rewarded" || item.rewardStatus === "Redeemed" ? "success" : "attention"}>
+                  <Badge
+                    tone={
+                      item.rewardStatus === "Discount Removed"
+                        ? "critical"
+                        : item.rewardIssued || item.rewardStatus === "Rewarded" || item.rewardStatus === "Redeemed"
+                          ? "success"
+                          : "attention"
+                    }
+                  >
                     {item.rewardStatus || "Not Rewarded"}
                   </Badge>
                 </InlineStack>

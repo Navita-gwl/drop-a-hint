@@ -419,7 +419,11 @@ async function executeIssueReferralReward({ shop, adminGraphql, order, referralI
     console.log(`[REWARD] discount creation skipped`);
 
     // Ensure email is sent if discount exists but email was previously pending/failed
-    if (!currentReferral.rewardEmailSent) {
+    if (
+      !currentReferral.rewardEmailSent &&
+      currentReferral.discountCode &&
+      currentReferral.rewardStatus !== "Discount Removed"
+    ) {
       await dispatchRewardEmailSafely({ shop, referral: currentReferral });
     } else {
       console.log(`[REWARD] email already sent=true`);
@@ -1324,5 +1328,93 @@ export async function retryRewardEmail({ shop, referralId }) {
     });
     return { success: false, error: `Email delivery failed: ${err.message}`, referral: updated };
   }
+}
+
+function sameDiscountId(storedId, incomingId) {
+  if (!storedId || !incomingId) return false;
+  if (String(storedId) === String(incomingId)) return true;
+  const storedTail = String(storedId).split("/").pop();
+  const incomingTail = String(incomingId).split("/").pop();
+  return Boolean(storedTail && storedTail === incomingTail);
+}
+
+async function clearRemovedDiscount(referralId) {
+  await prisma.referral.update({
+    where: { id: referralId },
+    data: {
+      discountCode: null,
+      discountId: null,
+      rewardStatus: "Discount Removed",
+    },
+  });
+  await prisma.rewardIssuanceLog.deleteMany({ where: { referralId } });
+}
+
+/**
+ * Clears a referral discount after that code is deleted in Shopify Admin.
+ * The referral stays, without the code, so it is not issued again.
+ */
+export async function removeReferralDiscountByShopifyId({ shop, discountId }) {
+  if (!shop || !discountId) return { cleared: 0 };
+
+  const referrals = await prisma.referral.findMany({
+    where: { shop, discountId: { not: null } },
+    select: { id: true, discountId: true },
+  });
+  const matches = referrals.filter((referral) => sameDiscountId(referral.discountId, discountId));
+
+  for (const referral of matches) {
+    await clearRemovedDiscount(referral.id);
+    console.log(`[DISCOUNT] Removed deleted Shopify discount from referral #${referral.id}`);
+  }
+
+  return { cleared: matches.length };
+}
+
+/**
+ * Drops discount codes from referrals when those discounts no longer exist in Shopify.
+ */
+export async function syncRemovedShopifyDiscounts({ shop, adminGraphql }) {
+  if (!shop || !adminGraphql) return { cleared: 0 };
+
+  const referrals = await prisma.referral.findMany({
+    where: { shop, discountId: { not: null } },
+    select: { id: true, discountId: true },
+  });
+  if (referrals.length === 0) return { cleared: 0 };
+
+  const ids = [...new Set(referrals.map((referral) => referral.discountId).filter(Boolean))];
+  const existingIds = new Set();
+
+  for (let index = 0; index < ids.length; index += 50) {
+    const chunk = ids.slice(index, index + 50);
+    const response = await adminGraphql(
+      `#graphql
+        query discountNodes($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            id
+          }
+        }`,
+      { variables: { ids: chunk } }
+    );
+    const data = await response.json();
+    if (data?.errors?.length) {
+      throw new Error(data.errors.map((error) => error.message).join("; "));
+    }
+    for (const node of data?.data?.nodes || []) {
+      if (node?.id) existingIds.add(node.id);
+    }
+  }
+
+  let cleared = 0;
+  for (const referral of referrals) {
+    const stillExists = [...existingIds].some((id) => sameDiscountId(referral.discountId, id));
+    if (stillExists) continue;
+    await clearRemovedDiscount(referral.id);
+    cleared += 1;
+    console.log(`[DISCOUNT] Shopify discount missing. Cleared it from referral #${referral.id}`);
+  }
+
+  return { cleared };
 }
 

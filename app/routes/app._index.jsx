@@ -4,7 +4,7 @@ import prisma from "../db.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { ensureWebhookSubscriptions } from "../services/webhooks.server";
-import { reconcileReferralById, retryRewardEmail } from "../services/referral.server";
+import { reconcileReferralById, retryRewardEmail, syncRemovedShopifyDiscounts } from "../services/referral.server";
 import { getDefaultFromEmail, resolveEmailProvider } from "../services/email.server";
 import dropAHintStyles from "../styles/drop-a-hint.css?url";
 
@@ -42,6 +42,14 @@ export const loader = async ({ request }) => {
       await ensureWebhookSubscriptions({ shop, adminGraphql: admin.graphql });
     } catch (whErr) {
       console.warn("[App Loader] Webhook sync notice:", whErr.message);
+    }
+  }
+
+  if (admin?.graphql && shop) {
+    try {
+      await syncRemovedShopifyDiscounts({ shop, adminGraphql: admin.graphql });
+    } catch (syncErr) {
+      console.warn("[App Loader] Discount sync notice:", syncErr.message);
     }
   }
 
