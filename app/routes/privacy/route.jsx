@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import styles from "./privacy.module.css";
 
 const APP_NAME = "Drop a Hint Pro";
-const CONTACT_EMAIL = "vinod.khajja@galaxyweblinks.in";
+const CONTACT_EMAIL = "appsupport@galaxyweblinks.com";
 
 export const meta = () => [
   { title: `${APP_NAME} Privacy Policy` },
