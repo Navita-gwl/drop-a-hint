@@ -38,6 +38,13 @@ export default function PrivacyPolicyPage() {
             <li>Your shop&apos;s Customers</li>
             <li>Your shop&apos;s Discount</li>
           </ul>
+          <p>When a shopper uses the referral form, the App also stores:</p>
+          <ul>
+            <li>The referrer&apos;s name and e-mail address</li>
+            <li>The friend&apos;s name and e-mail address</li>
+            <li>The product that was referred</li>
+            <li>The order status and reward status for that referral</li>
+          </ul>
         </section>
 
         <section className={styles.section}>
@@ -56,8 +63,10 @@ export default function PrivacyPolicyPage() {
         <section className={styles.section}>
           <h2>Sharing Your Personal Information</h2>
           <p>
-            We do not share personal information with third parties, however, all personal data are
-            physically stored in our server.
+            We do not sell personal information. Referral and reward emails are sent through
+            SendGrid, or through the SMTP server configured for the App. Those services process the
+            recipient&apos;s name, e-mail address, and message so the email can be delivered. Referral
+            records are stored on our server.
           </p>
         </section>
 
@@ -79,7 +88,10 @@ export default function PrivacyPolicyPage() {
           <h2>Data Retention</h2>
           <p>
             When you create an account through the Site, we will maintain your Customer Information
-            for our records unless and until you ask us to delete this information.
+            for our records unless and until you ask us to delete this information. When a store
+            uninstalls the App, we delete that store&apos;s referral records, settings, and sessions.
+            If Shopify asks us to provide, delete, or redact a customer&apos;s information, or to delete
+            a store&apos;s information, we do that when the request is received.
           </p>
         </section>
 

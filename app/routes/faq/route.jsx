@@ -22,11 +22,11 @@ const faqs = [
         <p>In the Shopify admin, open Online Store, then Themes, then Customize.</p>
         <ul>
           <li>
-            Turn on the <strong>Drop a Hint Pro</strong> app embed and save.
+            On the default product template, add the <strong>Drop a Hint Banner</strong> block near
+            the Add to cart button.
           </li>
           <li>
-            On the default product template, add the <strong>Drop a Hint Pro</strong> block near the Add
-            to cart button.
+            On the customer order template, add the <strong>Drop a Hint Order</strong> block.
           </li>
           <li>Save the theme, then open a product page and submit a test referral.</li>
         </ul>

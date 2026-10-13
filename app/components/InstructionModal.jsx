@@ -20,11 +20,11 @@ export function InstructionModal({ isOpen, onClose }) {
               <InlineStack gap="200" blockAlign="center">
                 <Badge tone="info">Step 1</Badge>
                 <Text variant="headingSm" as="h4" fontWeight="semibold">
-                  Enable App Embed Extension
+                  Enable the App on the Theme
                 </Text>
               </InlineStack>
               <Text variant="bodyMd" as="p" tone="subdued">
-                In your Shopify Admin, navigate to <strong>Online Store &gt; Themes &gt; Customize</strong>. In the left sidebar, click the <strong>App Embeds</strong> tab, turn on <strong>Drop A Hint</strong>, and click <strong>Save</strong>.
+                In the Theme Editor, select <strong>Products &gt; Default product</strong>. Click <strong>Add block</strong>, choose <strong>Drop a Hint Banner</strong>, and place it near the Add to cart button.
               </Text>
             </BlockStack>
           </Box>
@@ -35,11 +35,11 @@ export function InstructionModal({ isOpen, onClose }) {
               <InlineStack gap="200" blockAlign="center">
                 <Badge tone="info">Step 2</Badge>
                 <Text variant="headingSm" as="h4" fontWeight="semibold">
-                  Add &ldquo;Drop A Hint&rdquo; Button to Product Page
+                  Add the Order Block
                 </Text>
               </InlineStack>
               <Text variant="bodyMd" as="p" tone="subdued">
-                In the Theme Editor, select <strong>Products &gt; Default product</strong> template. Under the Product Information section, click <strong>Add Block</strong>, choose <strong>Drop A Hint Button</strong>, and drag it near your Add to Cart button.
+                Open the <strong>Customers &gt; Order</strong> template. Click <strong>Add block</strong>, choose <strong>Drop a Hint Order</strong>, and save the theme.
               </Text>
             </BlockStack>
           </Box>
@@ -54,7 +54,7 @@ export function InstructionModal({ isOpen, onClose }) {
                 </Text>
               </InlineStack>
               <Text variant="bodyMd" as="p" tone="subdued">
-                Save your theme changes and visit any active product page on your storefront. Click the <strong>Drop A Hint</strong> button to verify the modal pop-up, referral creation, and email notifications.
+                Save the theme and open a product page. Use <strong>Drop a Hint Banner</strong> to send a test referral and confirm the invitation email.
               </Text>
             </BlockStack>
           </Box>
