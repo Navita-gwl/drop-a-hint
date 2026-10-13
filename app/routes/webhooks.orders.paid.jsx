@@ -64,6 +64,7 @@ export const action = async ({ request }) => {
         shop,
         order: payload,
         adminGraphql,
+        allowRewardIssuance: true,
       });
 
       if (result) {

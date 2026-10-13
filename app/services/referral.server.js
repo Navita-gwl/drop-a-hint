@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import prisma from "../db.server.js";
-import { sanitizeInput, isValidEmail, sendRewardEmail } from "./email.server.js";
+import { sanitizeInput, isValidEmail, maskEmail, sendRewardEmail } from "./email.server.js";
 import { unauthenticated } from "../shopify.server.js";
 
 /**
@@ -257,8 +257,8 @@ export async function createReferral({
   console.log(`[REFERRAL] created`);
   console.log(`[REFERRAL] Referral ID:          #${referral.id}`);
   console.log(`[REFERRAL] Shop:                 ${shop}`);
-  console.log(`[REFERRAL] Referrer (A):         ${cleanSenderName} (${cleanSenderEmail})`);
-  console.log(`[REFERRAL] Friend (B):           ${cleanReceiverName} (${cleanReceiverEmail})`);
+  console.log(`[REFERRAL] Referrer (A):         ${maskEmail(cleanSenderEmail)}`);
+  console.log(`[REFERRAL] Friend (B):           ${maskEmail(cleanReceiverEmail)}`);
   console.log(`[REFERRAL] Product ID:           ${cleanProductId || "N/A"}`);
   console.log(`[REFERRAL] Product Title:        ${cleanProductTitle || "N/A"}`);
   console.log(`[REFERRAL] Reward Snapshot:      ${rewardValue}${rewardType === "percentage" ? "%" : " Fixed"}`);
@@ -627,7 +627,7 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
   const orderNumber = orderNumberStr.startsWith("#") ? orderNumberStr : `#${orderNumberStr}`;
   const customerEmail = String(order.email || order.customer?.email || "").trim().toLowerCase();
   const shopifyCustomerId = order.customer?.id ? cleanShopifyId(order.customer.id) : null;
-  const financialStatus = String(order.financial_status || order.displayFinancialStatus || "paid").toLowerCase();
+  const financialStatus = String(order.financial_status || order.displayFinancialStatus || "pending").toLowerCase();
   const isPaid = financialStatus === "paid";
   const orderAmount = order.total_price || order.totalPriceSet?.shopMoney?.amount ? String(order.total_price || order.totalPriceSet?.shopMoney?.amount) : null;
 
@@ -701,8 +701,8 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
   console.log(`[ORDER] Shop:               ${shop}`);
   console.log(`[ORDER] Order ID:           ${orderId}`);
   console.log(`[ORDER] Order Number:       ${orderNumber}`);
-  console.log(`[ORDER] Customer Email:     ${customerEmail || "(none)"}`);
-  console.log(`[ORDER] Customer ID:        ${shopifyCustomerId || "(none)"}`);
+  console.log(`[ORDER] Customer Email:     ${maskEmail(customerEmail)}`);
+  console.log(`[ORDER] Customer ID:        ${shopifyCustomerId ? "present" : "(none)"}`);
   console.log(`[ORDER] Financial Status:   ${financialStatus} (isPaid: ${isPaid})`);
   console.log(`[ORDER] Extracted Token:    ${noteToken ? "present" : "(none)"}`);
   console.log(`[ORDER] Discount Codes:     ${discountCodes.length ? `${discountCodes.length} applied` : "(none)"}`);
@@ -759,7 +759,7 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
     });
 
     if (matchingReferral) {
-      console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId} customerEmail=${customerEmail} lineItemProductIds=${orderProductIds.join(",")} referralToken=present referralId=${matchingReferral.id}`);
+      console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId ? "present" : "(none)"} customerEmail=${maskEmail(customerEmail)} lineItemProductIds=${orderProductIds.join(",")} referralToken=present referralId=${matchingReferral.id}`);
       console.log(`[REFERRAL-MATCH] ✅ Matched by unique token → Referral #${matchingReferral.id}`);
     }
   }
@@ -775,7 +775,7 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
     });
 
     if (matchingReferral) {
-      console.log(`[REFERRAL-MATCH] ✅ Matched by Shopify Customer ID '${shopifyCustomerId}' → Referral #${matchingReferral.id}`);
+      console.log(`[REFERRAL-MATCH] Matched by Shopify customer id → Referral #${matchingReferral.id}`);
     }
   }
 
@@ -791,7 +791,7 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
     });
 
     if (candidateReferrals && candidateReferrals.length > 0) {
-      console.log(`[REFERRAL-MATCH] Found ${candidateReferrals.length} candidate referral(s) for email '${customerEmail}'`);
+      console.log(`[REFERRAL-MATCH] Found ${candidateReferrals.length} candidate referral(s) for ${maskEmail(customerEmail)}`);
 
       // Try matching by product ID first
       matchingReferral = candidateReferrals.find((ref) => {
@@ -809,19 +809,14 @@ export async function processOrderReferral({ shop, order, adminGraphql, allowRew
         });
       }
 
-      // If referral had no product constraint (general referral)
+      // A referral with no product can match this email. A different product must not.
       if (!matchingReferral) {
         matchingReferral = candidateReferrals.find((ref) => !ref.productId);
       }
 
-      // Fallback: match the most recent pending referral for this friend
-      if (!matchingReferral) {
-        matchingReferral = candidateReferrals[0];
-      }
-
       if (matchingReferral) {
-        console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId} customerEmail=${customerEmail} lineItemProductIds=${orderProductIds.join(",")} referralToken=${noteToken ? "present" : "none"} referralId=${matchingReferral.id}`);
-        console.log(`[REFERRAL-MATCH] ✅ Matched by email '${customerEmail}' → Referral #${matchingReferral.id}`);
+        console.log(`[REFERRAL DEBUG] orderId=${orderId} customerId=${shopifyCustomerId ? "present" : "(none)"} customerEmail=${maskEmail(customerEmail)} lineItemProductIds=${orderProductIds.join(",")} referralToken=${noteToken ? "present" : "none"} referralId=${matchingReferral.id}`);
+        console.log(`[REFERRAL-MATCH] Matched by email ${maskEmail(customerEmail)} → Referral #${matchingReferral.id}`);
       }
     }
   }
@@ -968,7 +963,7 @@ export async function reconcileReferralById({ shop, referralId, adminGraphql }) 
     return { success: false, error: "No Shopify Admin API access available" };
   }
 
-  console.log(`\n[RECONCILE] Scanning Shopify orders for Referral #${referral.id} (Friend: ${referral.receiverEmail})`);
+  console.log(`\n[RECONCILE] Scanning Shopify orders for Referral #${referral.id} (Friend: ${maskEmail(referral.receiverEmail)})`);
 
   // Query recent Shopify orders (last 50 orders)
   const ordersQuery = `#graphql
@@ -1070,7 +1065,7 @@ export async function reconcileReferralById({ shop, referralId, adminGraphql }) 
 
         if (hasProduct) {
           matchedOrder = o;
-          matchReason = `Customer email '${friendEmail}' + referred product`;
+          matchReason = "Customer email + referred product";
           break;
         }
       }
@@ -1080,7 +1075,7 @@ export async function reconcileReferralById({ shop, referralId, adminGraphql }) 
   if (!matchedOrder) {
     return {
       success: false,
-      message: `No matching Shopify purchase found yet for Referral #${referral.id} (searched token '${referral.token}' and email '${referral.receiverEmail}'). Customer B has not completed a purchase with this referral.`,
+      message: `No matching Shopify purchase found yet for Referral #${referral.id}. Customer B has not completed a purchase with this referral.`,
       referral,
     };
   }
@@ -1249,16 +1244,6 @@ export async function validateCouponCode({ shop, code, customerEmail }) {
     valid: true,
     isAppCode: true,
     isUsed: false,
-    referral: targetReferral
-      ? {
-          id: targetReferral.id,
-          discountCode: targetReferral.discountCode,
-          discountAmount: targetReferral.discountAmount,
-          senderEmail: targetReferral.senderEmail,
-        }
-      : {
-          discountCode: cleanCode,
-        },
   };
 }
 
@@ -1317,7 +1302,7 @@ export async function retryRewardEmail({ shop, referralId }) {
     });
 
     console.log(`[EMAIL] sent=true`);
-    return { success: true, message: `Reward email sent successfully to ${referral.senderEmail}!`, referral: updated };
+    return { success: true, message: "Reward email sent successfully.", referral: updated };
   } catch (err) {
     console.error(`[EMAIL] sent=false error:`, err.message);
     const updated = await prisma.referral.update({

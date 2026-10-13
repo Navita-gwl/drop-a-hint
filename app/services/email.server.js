@@ -28,7 +28,14 @@ export function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-const FALLBACK_FROM_EMAIL = "pawan.kumar@galaxyweblinks.com";
+export function maskEmail(email) {
+  const value = String(email || "").trim();
+  const at = value.indexOf("@");
+  if (at <= 0) return value ? "(redacted)" : "(none)";
+  return `${value.slice(0, 3)}•••@${value.slice(at + 1)}`;
+}
+
+const SUPPORT_RECIPIENT_EMAIL = "appsupport@galaxyweblinks.com";
 
 function readSmtpSettings() {
   const host = (process.env.SMTP_HOST || "").trim();
@@ -86,19 +93,31 @@ export function resolveEmailProvider() {
 }
 
 export function getDefaultFromEmail() {
-  let provider = hasSendGridCredentials() ? "sendgrid" : "smtp";
+  let provider = "";
   try {
     provider = resolveEmailProvider();
   } catch {
-    // Fall through to whichever credential set is present.
+    if (hasSmtpCredentials()) provider = "smtp";
+    else if (hasSendGridCredentials()) provider = "sendgrid";
+    else return "";
   }
 
   if (provider === "smtp") {
     const smtp = readSmtpSettings();
-    return smtp.from || smtp.user || process.env.SENDGRID_FROM_EMAIL || FALLBACK_FROM_EMAIL;
+    return smtp.from || smtp.user || (process.env.SENDGRID_FROM_EMAIL || "").trim();
   }
 
-  return process.env.SENDGRID_FROM_EMAIL || readSmtpSettings().from || FALLBACK_FROM_EMAIL;
+  return (process.env.SENDGRID_FROM_EMAIL || "").trim() || readSmtpSettings().from || "";
+}
+
+function requireFromEmail(configured) {
+  const chosen = configured && isValidEmail(configured) ? configured.trim() : getDefaultFromEmail();
+  if (!chosen || !isValidEmail(chosen)) {
+    throw new Error(
+      "No sending address is configured. Set SENDGRID_FROM_EMAIL or SMTP_FROM_EMAIL, or save a sending address in Email Settings."
+    );
+  }
+  return chosen;
 }
 
 function formatFromAddress(from) {
@@ -146,9 +165,9 @@ async function dispatchSmtp(mailOptions) {
 
   console.log("[SMTP] ─────────────────────────────────────────────────");
   console.log(`[SMTP] Host       : ${smtp.host}:${smtp.port}`);
-  console.log(`[SMTP] From       : ${formatFromAddress(mailOptions.from)}`);
-  console.log(`[SMTP] To         : ${mailOptions.to}`);
-  if (mailOptions.replyTo) console.log(`[SMTP] Reply-To   : ${mailOptions.replyTo}`);
+  console.log(`[SMTP] From       : ${maskEmail(formatFromAddress(mailOptions.from))}`);
+  console.log(`[SMTP] To         : ${maskEmail(mailOptions.to)}`);
+  if (mailOptions.replyTo) console.log(`[SMTP] Reply-To   : ${maskEmail(mailOptions.replyTo)}`);
   console.log("[SMTP] Subject    : (omitted)");
   console.log("[SMTP] ─────────────────────────────────────────────────");
   console.log("[EMAIL] Template generated");
@@ -190,9 +209,9 @@ async function dispatchSendGrid(mailOptions) {
 
   console.log("[SendGrid] ─────────────────────────────────────────────────");
   console.log(`[SendGrid] API Key    : ${maskedKey}`);
-  console.log(`[SendGrid] From       : ${typeof mailOptions.from === "object" ? `${mailOptions.from.name} <${mailOptions.from.email}>` : mailOptions.from}`);
-  console.log(`[SendGrid] To         : ${mailOptions.to}`);
-  if (mailOptions.replyTo) console.log(`[SendGrid] Reply-To   : ${mailOptions.replyTo}`);
+  console.log(`[SendGrid] From       : ${maskEmail(typeof mailOptions.from === "object" ? mailOptions.from.email : mailOptions.from)}`);
+  console.log(`[SendGrid] To         : ${maskEmail(mailOptions.to)}`);
+  if (mailOptions.replyTo) console.log(`[SendGrid] Reply-To   : ${maskEmail(mailOptions.replyTo)}`);
   console.log("[SendGrid] Subject    : (omitted)");
   console.log("[SendGrid] ─────────────────────────────────────────────────");
 
@@ -204,12 +223,17 @@ async function dispatchSendGrid(mailOptions) {
   } catch (err) {
     const sgErrors = err?.response?.body?.errors;
     let detail = sgErrors?.map((e) => e.message).join("; ") || err.message || String(err);
-    const defaultFromEmail = process.env.SENDGRID_FROM_EMAIL || "pawan.kumar@galaxyweblinks.com";
+    const defaultFromEmail = (process.env.SENDGRID_FROM_EMAIL || "").trim();
     const currentFromEmail = typeof mailOptions.from === "object" ? mailOptions.from.email : mailOptions.from;
 
-    // If custom sender is unverified in SendGrid, fall back to default verified sender while preserving replyTo
-    if (detail.includes("verified Sender Identity") && currentFromEmail !== defaultFromEmail) {
-      console.warn(`[SendGrid Warning] Custom sender '${currentFromEmail}' is not verified in SendGrid. Falling back to default verified sender '${defaultFromEmail}' with Reply-To set to '${currentFromEmail}'.`);
+    // If custom sender is unverified in SendGrid, fall back to the configured sender while preserving replyTo
+    if (
+      defaultFromEmail &&
+      isValidEmail(defaultFromEmail) &&
+      detail.includes("verified Sender Identity") &&
+      currentFromEmail !== defaultFromEmail
+    ) {
+      console.warn(`[SendGrid Warning] Custom sender ${maskEmail(currentFromEmail)} is not verified in SendGrid. Falling back to the configured sender ${maskEmail(defaultFromEmail)}.`);
 
       const fallbackMailOptions = {
         ...mailOptions,
@@ -221,7 +245,7 @@ async function dispatchSendGrid(mailOptions) {
 
       try {
         [response] = await sgMail.send(fallbackMailOptions);
-        console.log(`[SendGrid] ✅ Delivered via fallback verified sender (${defaultFromEmail})`);
+        console.log(`[SendGrid] Delivered via configured sender ${maskEmail(defaultFromEmail)}`);
       } catch (fallbackErr) {
         const fallbackDetail = fallbackErr?.response?.body?.errors?.map((e) => e.message).join("; ") || fallbackErr.message;
         console.error("[EMAIL] sent=false");
@@ -414,10 +438,10 @@ function rewardEmailHtml({ cleanSenderName, cleanDiscountCode, cleanDiscountAmou
 // ---------------------------------------------------------------------------
 
 /**
- * Sends a support-ticket email to the designated support recipient (pawan.kumar@galaxyweblinks.com).
+ * Sends a support-ticket email to SUPPORT_RECIPIENT_EMAIL, or the public support address.
  *
- * @throws {Error} if validation fails, the API key is missing, or SendGrid
- *   rejects the message. Callers should return a 500 response on error.
+ * @throws {Error} if validation fails, the API key is missing, or delivery
+ *   is rejected. Callers should return a 500 response on error.
  */
 export async function sendSupportEmail({ name, email, phone, subject, message, shop }) {
   const cleanName    = sanitizeInput(name);
@@ -432,9 +456,8 @@ export async function sendSupportEmail({ name, email, phone, subject, message, s
   if (!cleanSubject)              throw new Error("Subject is required.");
   if (!cleanMessage)              throw new Error("Message body is required.");
 
-  // Target recipient email address: pawan.kumar@galaxyweblinks.com
-  const to        = process.env.SUPPORT_RECIPIENT_EMAIL || "pawan.kumar@galaxyweblinks.com";
-  const fromEmail = getDefaultFromEmail();
+  const to        = (process.env.SUPPORT_RECIPIENT_EMAIL || SUPPORT_RECIPIENT_EMAIL).trim();
+  const fromEmail = requireFromEmail();
 
   const from = {
     email: fromEmail,
@@ -513,11 +536,8 @@ export async function sendReferralEmail({
     throw new Error("A valid Referrer Email is required.");
   }
 
-  // Sender email: use admin configuredSenderEmail if set & valid, else the active provider default
   const cleanConfiguredSender = sanitizeInput(configuredSenderEmail);
-  const fromEmail = (cleanConfiguredSender && isValidEmail(cleanConfiguredSender))
-    ? cleanConfiguredSender
-    : getDefaultFromEmail();
+  const fromEmail = requireFromEmail(cleanConfiguredSender);
 
   const from = {
     email: fromEmail,
@@ -608,11 +628,8 @@ export async function sendRewardEmail({
   console.log(`[EMAIL] reward email trigger started`);
   console.log(`[EMAIL] recipient=${maskedRecipient}`);
 
-  // Sender email: use admin configuredSenderEmail if set & valid, else the active provider default
   const cleanConfiguredSender = sanitizeInput(configuredSenderEmail);
-  const fromEmail = (cleanConfiguredSender && isValidEmail(cleanConfiguredSender))
-    ? cleanConfiguredSender
-    : getDefaultFromEmail();
+  const fromEmail = requireFromEmail(cleanConfiguredSender);
 
   const from = {
     email: fromEmail,
@@ -657,5 +674,43 @@ export async function sendRewardEmail({
       cleanExpiryDate,
       cleanShop,
     }),
+  });
+}
+
+/**
+ * Emails a customer data export to the shop so the merchant can fulfill a privacy request.
+ */
+export async function sendCustomerDataExport({ to, shop, requestId, records }) {
+  if (!isValidEmail(to)) {
+    throw new Error("A shop contact email is required for the customer data export.");
+  }
+
+  const fromEmail = requireFromEmail();
+  const cleanShop = sanitizeInput(shop) || "Unknown Store";
+  const lines = (records || []).map((record, index) => {
+    return [
+      `Record ${index + 1}`,
+      `Role: ${record.role}`,
+      `Referrer: ${record.senderName} <${record.senderEmail}>`,
+      `Friend: ${record.receiverName} <${record.receiverEmail}>`,
+      `Product: ${record.productTitle || "(none)"}`,
+      `Order: ${record.orderNumber || record.orderId || "(none)"}`,
+      `Order status: ${record.orderStatus || "(none)"}`,
+      `Reward status: ${record.rewardStatus || "(none)"}`,
+    ].join("\n");
+  });
+
+  const text = [
+    `Customer data request ${requestId || ""} for ${cleanShop}`.trim(),
+    "",
+    lines.length ? lines.join("\n\n") : "No referral records matched this customer.",
+  ].join("\n");
+
+  return dispatch({
+    to,
+    from: { email: fromEmail, name: "Drop a Hint Pro" },
+    subject: `Customer data request ${requestId || ""}`.trim(),
+    text,
+    html: `<pre style="font-family:sans-serif;white-space:pre-wrap">${sanitizeInput(text)}</pre>`,
   });
 }

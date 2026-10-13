@@ -8,7 +8,7 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-export function EmailSettings({ initialSettings, onSave, showToast, emailProvider = "sendgrid" }) {
+export function EmailSettings({ initialSettings, onSave, showToast, emailProvider = "sendgrid", hasDefaultFromEmail = false }) {
   const [savedSettings, setSavedSettings] = useState({
     senderEmail: initialSettings?.senderEmail || "",
     emailSubject: initialSettings?.emailSubject || "",
@@ -147,13 +147,20 @@ export function EmailSettings({ initialSettings, onSave, showToast, emailProvide
 
       <Form onSubmit={handleSubmit}>
         <BlockStack gap="600">
+          {!hasDefaultFromEmail && (
+            <Banner title="Sending address required" tone="warning">
+              <p>
+                No default sending address is configured. Save a sending email below, or set <strong>SENDGRID_FROM_EMAIL</strong> or <strong>SMTP_FROM_EMAIL</strong>, before invitation and reward emails can be sent.
+              </p>
+            </Banner>
+          )}
           {emailProvider === "smtp" ? (
             <Banner title="SMTP sending address" tone="info">
               <p>
                 Mail is sent through the SMTP server in your environment. A custom <strong>Sending Email</strong> must be an address that server is allowed to send from.
               </p>
               <p style={{ marginTop: "4px" }}>
-                Leave the field blank to use the default address from <strong>SMTP_FROM_EMAIL</strong>.
+                Leave the field blank to use <strong>SMTP_FROM_EMAIL</strong> or the SMTP username. If neither is set, mail is not sent.
               </p>
             </Banner>
           ) : (
@@ -162,7 +169,7 @@ export function EmailSettings({ initialSettings, onSave, showToast, emailProvide
                 Your email provider (SendGrid) requires any custom <strong>Sending Email</strong> (or domain) to be verified under <strong>SendGrid &gt; Settings &gt; Sender Authentication</strong> before sending emails.
               </p>
               <p style={{ marginTop: "4px" }}>
-                If an unverified sending email is used, SendGrid will reject outgoing emails. Leave blank to use your default verified sender.
+                If an unverified sending email is used, SendGrid will reject outgoing emails. Leave blank to use <strong>SENDGRID_FROM_EMAIL</strong>. If that address is not set, mail is not sent.
               </p>
             </Banner>
           )}
@@ -267,4 +274,5 @@ EmailSettings.propTypes = {
   onSave: PropTypes.func,
   showToast: PropTypes.func,
   emailProvider: PropTypes.oneOf(["smtp", "sendgrid"]),
+  hasDefaultFromEmail: PropTypes.bool,
 };
