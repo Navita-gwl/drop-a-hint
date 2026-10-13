@@ -117,7 +117,6 @@ export const loader = async ({ request }) => {
         valid: true,
         isAppCode: true,
         isUsed: false,
-        coupon: result.referral,
       });
     }
 
@@ -130,7 +129,7 @@ export const loader = async ({ request }) => {
 
 export const action = async ({ request }) => {
   try {
-    const { session, admin } = await authenticate.public.appProxy(request);
+    const { session } = await authenticate.public.appProxy(request);
 
     if (!session) {
       return jsonResponse({ success: false, error: "Unauthorized session" });
@@ -163,17 +162,7 @@ export const action = async ({ request }) => {
         customMessage,
       } = data || {};
 
-      // Debug logging for pricing & referral submission
-      console.log('[Drop A Hint] submit_referral payload:');
-      console.log('  Sender Name       :', senderName);
-      console.log('  Sender Email      :', senderEmail);
-      console.log('  Referrer Cust. ID :', referrerCustomerId || '(none)');
-      console.log('  Receiver Name     :', receiverName);
-      console.log('  Receiver Email    :', receiverEmail);
-      console.log('  Product ID        :', productId);
-      console.log('  Product Title     :', productTitle);
-      console.log('  Sale Price        :', productPrice || '(not provided)');
-      console.log('  Compare-At Price  :', productCompareAtPrice || '(none — not on sale)');
+      console.log(`[Drop A Hint] submit_referral received. Product ID: ${productId || "(none)"}`);
 
       // Input Validation
       if (!senderName || !senderName.trim()) {
@@ -300,16 +289,13 @@ export const action = async ({ request }) => {
         return jsonResponse({ success: false, error: "Invalid JSON body" });
       }
 
-      const adminGraphqlClient = admin?.graphql ?? null;
-
       console.log("[App Proxy] complete_order triggered.");
       console.log("  Shop:", session.shop);
-      console.log("  Admin client available:", !!adminGraphqlClient);
 
       const updatedReferral = await processOrderReferral({
-        shop:         session.shop,
-        order:        data?.order || data,
-        adminGraphql: adminGraphqlClient,
+        shop: session.shop,
+        order: data?.order || data,
+        allowRewardIssuance: false,
       });
 
       if (!updatedReferral) {

@@ -89,6 +89,7 @@ export const loader = async ({ request }) => {
         return "sendgrid";
       }
     })(),
+    hasDefaultFromEmail: Boolean(getDefaultFromEmail()),
   };
 };
 
@@ -156,7 +157,7 @@ export const action = async ({ request }) => {
         },
       });
 
-      const defaultSender = getDefaultFromEmail().toLowerCase();
+      const defaultSender = (getDefaultFromEmail() || "").toLowerCase();
       const customSenders = [];
       if (senderEmail && senderEmail.toLowerCase() !== defaultSender) {
         customSenders.push(senderEmail);
@@ -170,6 +171,13 @@ export const action = async ({ request }) => {
         emailProvider = resolveEmailProvider();
       } catch {
         emailProvider = "sendgrid";
+      }
+
+      if (!defaultSender && customSenders.length === 0) {
+        return {
+          success: true,
+          message: "Email settings saved. Add a sending address here, or set SENDGRID_FROM_EMAIL or SMTP_FROM_EMAIL, before emails can be sent.",
+        };
       }
 
       if (customSenders.length > 0 && emailProvider === "sendgrid") {
@@ -224,7 +232,7 @@ export const action = async ({ request }) => {
 };
 
 export default function Index() {
-  const { referrals: initialReferrals, settings, productDiscountRules, emailProvider } = useLoaderData();
+  const { referrals: initialReferrals, settings, productDiscountRules, emailProvider, hasDefaultFromEmail } = useLoaderData();
   const actionData = useActionData();
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -416,6 +424,7 @@ export default function Index() {
               >
                 <EmailSettings
                   emailProvider={emailProvider}
+                  hasDefaultFromEmail={hasDefaultFromEmail}
                   initialSettings={settings}
                   onSave={(newSettings) => {
                     submit(
