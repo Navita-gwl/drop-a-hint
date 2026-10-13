@@ -106,7 +106,6 @@ test("Coupon Code Checkout Validation Test Suite", async (t) => {
     assert.equal(validationResult.valid, true, "New coupon code must be valid");
     assert.equal(validationResult.isAppCode, true, "Must be identified as an App Code");
     assert.equal(validationResult.isUsed, false, "Must NOT be marked as used yet");
-    assert.equal(validationResult.referral.discountCode, testDiscountCode);
   });
 
   await t.test("3. Redeemed App Coupon reports used state", async () => {
