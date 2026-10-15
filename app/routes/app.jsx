@@ -28,6 +28,7 @@ export const links = () => [
 import { SaveBarProvider } from "../context/SaveBarContext";
 import { GlobalSaveBar } from "../components/GlobalSaveBar";
 import { UnsavedChangesBlocker } from "../components/UnsavedChangesBlocker";
+import { TawkChat } from "../components/TawkChat";
 
 export default function App() {
   const { apiKey } = useLoaderData();
@@ -42,6 +43,7 @@ export default function App() {
             </s-app-nav>
             <GlobalSaveBar />
             <UnsavedChangesBlocker />
+            <TawkChat />
             <Outlet />
           </Frame>
         </SaveBarProvider>
